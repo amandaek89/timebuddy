@@ -8,7 +8,6 @@ import org.springframework.data.annotation.Id;
 /**
  * Represents a Todo task, which can be associated with a specific TodoList.
  * A Todo has a title, description, and a status field to indicate whether it is completed or not.
- *
  * Example usage:
  *   - Title: "Buy milk"
  *   - Description: "Don't forget to buy milk while shopping"
@@ -50,4 +49,5 @@ public class Todo {
     @ManyToOne
     @JoinColumn(name = "todolist_id") // Links the Todo to a specific TodoList
     private TodoList todoList;
+
 }

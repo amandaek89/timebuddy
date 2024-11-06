@@ -6,20 +6,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Represents a user in the system.
  * This class holds the user’s details including their username, password,
  * creation and update timestamps, and the lists of todos they have created.
  * It is mapped to the "user" table in the database.
- *
- * @param id The unique identifier for the user.
- * @param username The unique username for the user.
- * @param password The hashed password for the user.
- * @param createdAt The timestamp when the user was created.
- * @param updatedAt The timestamp when the user was last updated.
- * @param todoLists A list of todo lists associated with the user.
  */
 @Data
 @Entity
@@ -50,5 +45,6 @@ public class User {
     /** The list of todo lists created by the user. */
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<TodoList> todoLists;
+
 }
 

@@ -4,6 +4,8 @@ import com.timebuddy.models.Todo;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 /**
  * Repository interface for the Todo entity.
  * Provides CRUD operations for Todo objects and custom query methods.
@@ -20,5 +22,7 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
      * @return The Todo object that matches the provided title, or null if no match is found.
      */
     Todo findByTitle(String title);
+
+    List<Todo> findByTodoListId(Long todoListId);
 }
 

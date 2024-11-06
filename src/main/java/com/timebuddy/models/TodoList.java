@@ -12,11 +12,6 @@ import java.util.List;
  * Represents a TodoList entity that contains a list of todos.
  * This class is mapped to the "todolist" table in the database.
  * A TodoList is associated with a specific user, and it holds multiple todos.
- *
- * @param id The unique identifier for the TodoList.
- * @param title The title of the TodoList.
- * @param user The user who owns the TodoList.
- * @param todos The list of todos contained in the TodoList.
  */
 @Entity
 @Data
