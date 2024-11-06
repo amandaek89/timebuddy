@@ -1,5 +1,6 @@
 package com.timebuddy.configurations;
 
+import com.timebuddy.models.User;
 import com.timebuddy.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -8,6 +9,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+import java.util.Optional;
 
 @Configuration
 public class AppConfiguration {
@@ -44,10 +47,15 @@ public class AppConfiguration {
      */
     @Bean
     UserDetailsService userDetailsService() {
-        try {
-            return username -> (UserDetails) userRepo.findByUsername(username); // Hämtar användardetaljer från userRepo
-        } catch (Exception e) {
-            throw new UsernameNotFoundException("User not found"); // Kastar undantag om användaren inte hittas
-        }
+        return username -> {
+            // Hämta användaren från userRepo
+            Optional<User> user = userRepo.findByUsername(username);
+
+            // Om användaren inte finns, kasta ett undantag
+            return user
+                    .map(u -> (UserDetails) u) // Om användaren finns, returnera den som UserDetails
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found")); // Om inte, kasta undantag
+        };
     }
+
 }

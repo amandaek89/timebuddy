@@ -1,0 +1,6 @@
+com.timebuddy
+com.timebuddy.configurations
+com.timebuddy.controllers
+com.timebuddy.models
+com.timebuddy.repositories
+com.timebuddy.services
