@@ -2,6 +2,8 @@ package com.timebuddy.services;
 
 import com.timebuddy.models.Todo;
 import com.timebuddy.repositories.TodoRepository;
+import org.hibernate.query.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

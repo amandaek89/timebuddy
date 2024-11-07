@@ -1,10 +1,13 @@
 package com.timebuddy.services;
 
+import com.timebuddy.dtos.UserRequestDto;
+import com.timebuddy.dtos.UserResponseDto;
 import com.timebuddy.models.User;
 import com.timebuddy.repositories.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+
 /**
  * Service class for managing users.
  * Provides methods to register users, find users by ID, and load users by their username for authentication.
@@ -24,52 +27,45 @@ public class UserService {
     }
 
     /**
-     * Registers a new user by saving the user details to the database.
-     *
-     * @param user The user to be registered.
-     * @return The saved user with its generated ID.
-     */
-    public User registerUser(User user) {
-        // Set creation and update timestamps
-        user.setCreatedAt(new java.util.Date());
-        user.setUpdatedAt(new java.util.Date());
-
-        return userRepository.save(user);
-    }
-
-    /**
-     * Retrieves a user by their ID.
+     * Retrieves a user by their ID and returns a UserResponseDto.
      *
      * @param id The ID of the user to be retrieved.
-     * @return An Optional containing the User if found, otherwise an empty Optional.
+     * @return An Optional containing the UserResponseDto if found, otherwise an empty Optional.
      */
-    public Optional<User> findUserById(Long id) {
-        return userRepository.findById(id);
+    public Optional<UserResponseDto> findUserById(Long id) {
+        return userRepository.findById(id)
+                .map(this::convertToResponseDto);
     }
+
     /**
-     * Retrieves a user by their username.
+     * Retrieves a user by their username and returns a UserResponseDto.
      *
      * @param username The username of the user to be retrieved.
-     * @return An Optional containing the User if found, otherwise an empty Optional.
+     * @return An Optional containing the UserResponseDto if found, otherwise an empty Optional.
      */
-    public Optional<User> loadUserByUsername(String username) {
-        return userRepository.findByUsername(username);
+    public Optional<UserResponseDto> loadUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .map(this::convertToResponseDto);
     }
 
     /**
      * Updates the user's information.
      *
-     * @param id The ID of the user to be updated.
-     * @param updatedUser The updated User object containing the new values.
-     * @return The updated User object, or an empty Optional if no user is found with the given ID.
+     * @param id            The ID of the user to be updated.
+     * @param updatedUser   The updated UserRequestDto containing the new values.
+     * @return The updated UserResponseDto, or an empty Optional if no user is found with the given ID.
      */
-    public Optional<User> updateUser(Long id, User updatedUser) {
+    public Optional<UserResponseDto> updateUser(Long id, UserRequestDto updatedUser) {
         return userRepository.findById(id)
                 .map(user -> {
+                    // Update user fields
                     user.setUsername(updatedUser.getUsername());
-                    user.setPassword(updatedUser.getPassword());
+                    if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
+                        user.setPassword(updatedUser.getPassword()); // Only update password if provided
+                    }
                     user.setUpdatedAt(new java.util.Date()); // Set the updated timestamp
-                    return userRepository.save(user);
+                    User updatedUserEntity = userRepository.save(user);
+                    return convertToResponseDto(updatedUserEntity);
                 });
     }
 
@@ -81,5 +77,20 @@ public class UserService {
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
     }
+
+    /**
+     * Converts a User entity to a UserResponseDto.
+     *
+     * @param user The User entity to convert.
+     * @return The corresponding UserResponseDto.
+     */
+    private UserResponseDto convertToResponseDto(User user) {
+        UserResponseDto userResponseDto = new UserResponseDto();
+        userResponseDto.setId(user.getId());
+        userResponseDto.setUsername(user.getUsername());
+        return userResponseDto;
+    }
 }
+
+
 

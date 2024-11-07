@@ -72,7 +72,7 @@ public class JwtService {
      * @param token JWT-token som utgångsdatumet ska extraheras från.
      * @return Utgångsdatumet som ett Date-objekt.
      */
-    private Date extractExpiration(String token) {
+    Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);  // Extrahera utgångsdatumet
     }
 
@@ -133,7 +133,7 @@ public class JwtService {
      * @param token JWT-token som ska kontrolleras.
      * @return Sant om tokenet har gått ut, annars falskt.
      */
-    private boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());  // Jämför utgångsdatum med nuvarande datum
     }
 

@@ -22,7 +22,6 @@ public class TodoList {
 
     /** The unique identifier for the TodoList. */
     @jakarta.persistence.Id
-    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // Auto-generates the ID value.
     private Long id;
 
@@ -37,4 +36,5 @@ public class TodoList {
     /** The list of todos that belong to the TodoList. */
     @OneToMany(mappedBy = "todoList", cascade = CascadeType.ALL) // Cascades all operations to related Todo entities.
     private List<Todo> todos;
+
 }

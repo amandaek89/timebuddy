@@ -76,7 +76,7 @@ public class SecurityConfiguration {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        // Tillåt bara begäranden från http://cityatlas-env.eba-3dsjymff.eu-north-1.elasticbeanstalk.com och localhost
+        // Tillåt bara begäranden från localhost
         config.setAllowedOrigins(List.of("http://localhost:*, http://localhost:3000"));
         // Tillåt specifika HTTP-metoder
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE"));
