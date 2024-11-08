@@ -48,15 +48,17 @@ public class SecurityConfiguration {
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
                 .csrf(csrf -> csrf.disable())  // Disable CSRF protection for stateless apps
-                .cors(withDefaults())           // Enable CORS with default settings
+                .cors(withDefaults())           // Aktivera CORS med standardinställningar
                 .authorizeHttpRequests(auth -> {
-                    // Allow public access to authentication endpoints (login, register, etc.)
-                    auth.requestMatchers("/auth/login", "/auth/register").permitAll();
-                    // Allow access to Swagger UI
+                    // Tillåt alla att komma åt /auth/**-vägar utan autentisering
+                    auth.requestMatchers("/auth/**").permitAll();
+                    // Tillåt alla att komma åt Swagger UI
                     auth.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll();
-                    // Allow access to /api/* for authenticated users
-                    auth.requestMatchers("/api/users/**").authenticated();
-                    // Require authentication for all other requests
+                    // Tillåt användare med roller USER eller ADMIN att komma åt /user/**
+                    auth.requestMatchers("/api/**").hasAnyRole("USER", "ADMIN");
+                    // Tillåt endast användare med rollen ADMIN att komma åt /admin/**
+                    auth.requestMatchers("/admin/**").hasRole("ADMIN");
+                    // Kräver autentisering för alla övriga begäranden
                     auth.anyRequest().authenticated();
                 })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

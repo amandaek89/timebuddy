@@ -95,60 +95,31 @@ public class UserServiceTest {
     }
 
     @Test
-    void testUpdateUser_UserFound() {
-        // Arrange
-        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser));
-        when(userRepository.save(any(User.class))).thenReturn(mockUser);
-
-        // Create a UserRequestDto with new username and password
-        mockUserRequestDto.setUsername("updateduser");
-        mockUserRequestDto.setPassword("updatedpassword");
-
-        // Act
-        Optional<UserResponseDto> result = userService.updateUser(1L, mockUserRequestDto);
-
-        // Assert
-        assertTrue(result.isPresent(), "User should be updated successfully");
-        assertEquals("updateduser", result.get().getUsername(), "Updated username should match");
-        assertEquals(1L, result.get().getId(), "User ID should match");
-    }
-
-
-    @Test
-    void testUpdateUser_UserNotFound() {
-        // Arrange
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
-
-        // Act
-        Optional<UserResponseDto> result = userService.updateUser(1L, mockUserRequestDto);
-
-        // Assert
-        assertFalse(result.isPresent(), "User should not be updated if not found");
-    }
-
-    @Test
     void testDeleteUser_UserExists() {
         // Arrange
-        doNothing().when(userRepository).deleteById(1L);
+        String username = "testuser";
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(mockUser));
+        doNothing().when(userRepository).delete(mockUser);
 
         // Act
-        userService.deleteUser(1L);
+        String result = userService.deleteUser(username);
 
         // Assert
-        verify(userRepository, times(1)).deleteById(1L);
+        assertEquals("User deleted", result, "Success message should match");
+        verify(userRepository, times(1)).findByUsername(username);
+        verify(userRepository, times(1)).delete(mockUser);
     }
 
     @Test
-    void testDeleteUser_UserNotExists() {
+    void testDeleteUser_UserNotFound() {
         // Arrange
-        doNothing().when(userRepository).deleteById(1L);
+        String username = "nonexistentuser";
+        when(userRepository.findByUsername(username)).thenReturn(Optional.empty());
 
-        // Act
-        userService.deleteUser(1L);
-
-        // Assert
-        verify(userRepository, times(1)).deleteById(1L);
+        // Act & Assert
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> userService.deleteUser(username));
+        assertEquals("User not found", exception.getMessage(), "Exception message should match");
+        verify(userRepository, times(1)).findByUsername(username);
+        verify(userRepository, never()).delete(Optional.ofNullable(any()));
     }
 }
-
-

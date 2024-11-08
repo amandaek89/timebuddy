@@ -31,65 +31,69 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * @param jwtService - Tjänst för att hantera JWT-token.
      */
     @Autowired
-    public JwtAuthenticationFilter(UserDetailsService userDetailsService, @Lazy JwtService jwtService) {
+    public JwtAuthenticationFilter(UserDetailsService userDetailsService, JwtService jwtService) {
         this.userDetailsService = userDetailsService;
         this.jwtService = jwtService;
     }
 
     /**
-     * Filtreringsmetod som körs vid varje begäran för att kontrollera JWT-token och autentisera användaren om token är giltig.
+     * Filters incoming HTTP requests to check for a valid JWT token in the Authorization header.
+     * If a valid token is found, it authenticates the user and sets the authentication in the SecurityContext.
      *
-     * @param request - HTTP-begäran som innehåller JWT-token i Authorization-headern.
-     * @param response - HTTP-svar som används för att skicka felmeddelanden om något går snett.
-     * @param filterChain - Filterkedja som innehåller andra filter att köra efter detta.
-     * @throws ServletException - Om ett fel inträffar vid filtrering.
-     * @throws IOException - Om ett IO-fel uppstår.
+     * @param request The HTTP request to be processed.
+     * @param response The HTTP response to be sent.
+     * @param filterChain The filter chain to which the request should continue after processing.
+     * @throws ServletException If an error occurs during the filtering process.
+     * @throws IOException If an I/O error occurs while processing the request or response.
      */
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        // Hämta Authorization-headern från begäran
+        // Retrieve the Authorization header from the request
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String username;
 
-        // Kontrollera att headern inte är tom och att den börjar med "Bearer "
+        // Check if the header is not null and starts with "Bearer "
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            // If the Authorization header is not in the expected format, pass the request along the filter chain
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
-            // Extrahera JWT-token och hämta användarnamnet från den
-            jwt = authHeader.substring(7);
+            // Extract the JWT token from the header and obtain the username from the token
+            jwt = authHeader.substring(7);  // Remove "Bearer " from the header
             username = jwtService.extractUsername(jwt);
 
-            // Om användarnamnet finns och användaren inte redan är autentiserad
+            // If the username is present and the user is not already authenticated
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // Hämta användardetaljer från databasen
+                // Retrieve user details from the database using the username
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
-                // Kontrollera om token är giltig
+                // Check if the JWT token is valid
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-                    // Skapa en autentiseringstoken och sätt den i SecurityContext
+                    // Create an authentication token and set it in the SecurityContext
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
                                     null,
                                     userDetails.getAuthorities()
                             );
+                    // Set the details of the authentication token
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    // Set the authentication token in the SecurityContext
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
-            // Fortsätt till nästa filter i kedjan
+            // Continue to the next filter in the chain
             filterChain.doFilter(request, response);
         } catch (Exception exception) {
-            // Skicka felmeddelande om JWT-token är ogiltig
+            // If an error occurs (e.g., invalid JWT token), send an Unauthorized error response
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
         }
     }
-
 }
+

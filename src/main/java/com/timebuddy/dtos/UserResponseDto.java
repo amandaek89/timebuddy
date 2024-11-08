@@ -13,4 +13,11 @@ public class UserResponseDto {
 
     /** The username of the user. */
     private String username;
+
+    public UserResponseDto(long id, String username) {
+    }
+
+    public UserResponseDto() {
+
+    }
 }

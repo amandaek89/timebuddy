@@ -20,4 +20,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * @return An Optional containing the User if found, or an empty Optional if not found.
      */
     Optional<User> findByUsername(String username);
+
+    void delete(Optional<User> user);
 }

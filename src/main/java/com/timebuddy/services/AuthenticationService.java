@@ -1,6 +1,7 @@
 package com.timebuddy.services;
 
 import com.timebuddy.dtos.AuthenticationRequest;
+import com.timebuddy.models.Role;
 import com.timebuddy.models.User;
 import com.timebuddy.repositories.UserRepository;
 import com.timebuddy.exceptions.UserAlreadyExistsException;
@@ -11,7 +12,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class AuthenticationService {
@@ -51,6 +54,10 @@ public class AuthenticationService {
         User newUser = new User();
         newUser.setUsername(authRequest.getUsername());
         newUser.setPassword(passwordEncoder.encode(authRequest.getPassword()));  // Encrypt the password
+
+        // Assign the default role 'ROLE_USER' to the user
+        Set<Role> roles = new HashSet<>();
+        roles.add(Role.ROLE_USER);
 
         // Set creation and update timestamps
         newUser.setCreatedAt(new Date());

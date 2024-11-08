@@ -4,20 +4,19 @@ import com.timebuddy.models.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
+import java.util.stream.Collectors;
 
 /**
  * Service class for handling JSON Web Tokens (JWT).
@@ -81,15 +80,41 @@ public class JwtService {
     }
 
     /**
+     * Extracts the roles from a UserDetails object.
+     * @param userDetails The UserDetails object.
+     * @return A collection of roles as strings.
+     */
+    private Collection<String> extractRoles(UserDetails userDetails) {
+        return userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)  // Hämta varje roll som en sträng
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Extracts the roles from a JWT token.
+     * @param token The JWT token.
+     * @return A list of roles as strings.
+     */
+    public List<String> extractRolesFromToken(String token) {
+        Claims claims = extractAllClaims(token);  // Hämta alla krav från tokenet
+        return (List<String>) claims.get("roles");  // Hämta rollerna från kraven
+    }
+    /**
      * Generates a signing key from the secret key.
      *
      * @return The signing key.
      */
-    public Key getSignInKey() {
+    /*public Key getSignInKey() {
         // Get the secret key as a byte array and create a new SecretKeySpec
         return new SecretKeySpec(secretKey.getBytes(StandardCharsets.UTF_8), SignatureAlgorithm.HS256.getJcaName());
-    }
+    }/*/
+    public Key getSignInKey() {
+        // Decode the secret key from Base64 encoding
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
 
+        // Create an HMAC SHA key from the decoded bytes
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
 
     /**
      * Generates a JWT token for a given user.
@@ -99,6 +124,7 @@ public class JwtService {
      */
     public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", extractRoles(user));
         claims.put("id", user.getId());
         return createToken(claims, user.getUsername());
     }
