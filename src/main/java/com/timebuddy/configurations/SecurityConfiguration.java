@@ -26,9 +26,9 @@ public class SecurityConfiguration {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     /**
-     * Konstruktor för att injicera JwtAuthenticationFilter.
+     * Constructor to inject the JwtAuthenticationFilter.
      *
-     * @param jwtAuthenticationFilter - Filtern som hanterar JWT-autentisering i varje begäran.
+     * @param jwtAuthenticationFilter - The filter that handles JWT authentication for each request.
      */
     @Autowired
     public SecurityConfiguration(JwtAuthenticationFilter jwtAuthenticationFilter) {
@@ -36,60 +36,57 @@ public class SecurityConfiguration {
     }
 
     /**
-     * Konfigurerar säkerhetsinställningarna för HTTP-begäranden i applikationen.
-     * Här inaktiveras CSRF-skydd, CORS aktiveras med standardinställningar, och olika
-     * säkerhetsregler tillämpas på olika URL-mönster.
+     * Configures HTTP security settings for the application.
+     * Disables CSRF protection, enables CORS with default settings, and applies security rules
+     * for different URL patterns.
      *
-     * @param httpSecurity - Objekt som tillåter konfiguration av webbaserad säkerhet för specifika HTTP-begäranden.
-     * @return En SecurityFilterChain som specificerar säkerhetskonfigurationen.
-     * @throws Exception - Om det uppstår något fel under konfigurationen.
+     * @param httpSecurity - Object that allows configuration of web-based security for specific HTTP requests.
+     * @return A SecurityFilterChain that specifies the security configuration.
+     * @throws Exception - If any error occurs during the configuration.
      */
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
-                .csrf(csrf -> csrf.disable())  // Inaktivera CSRF-skydd eftersom sessioner inte används
-                .cors(withDefaults())           // Aktivera CORS med standardinställningar
+                .csrf(csrf -> csrf.disable())  // Disable CSRF protection for stateless apps
+                .cors(withDefaults())           // Enable CORS with default settings
                 .authorizeHttpRequests(auth -> {
-                    // Tillåt alla att komma åt /auth/**-vägar utan autentisering
-                    auth.requestMatchers("/auth/**").permitAll();
-                    // Tillåt alla att komma åt Swagger UI
+                    // Allow public access to authentication endpoints (login, register, etc.)
+                    auth.requestMatchers("/auth/login", "/auth/register").permitAll();
+                    // Allow access to Swagger UI
                     auth.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll();
-                    // Kräver autentisering för alla övriga begäranden
+                    // Allow access to /api/* for authenticated users
+                    auth.requestMatchers("/api/users/**").authenticated();
+                    // Require authentication for all other requests
                     auth.anyRequest().authenticated();
                 })
-                // Ange att sessioner inte skapas (STATELESS)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // Lägg till JWT-autentiseringsfiltret före UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return httpSecurity.build();
     }
 
-
     /**
-     * Konfigurerar CORS-filter för att tillåta specifika domäner, metoder och headers.
-     * Detta möjliggör att klienter från andra domäner kan skicka HTTP-begäranden till servern.
+     * Configures CORS filter to allow specific domains, methods, and headers.
+     * This enables clients from other domains to send HTTP requests to the server.
      *
-     * @return CorsFilter som hanterar CORS-konfigurationen för alla inkommande begäranden.
+     * @return CorsFilter that handles CORS configuration for all incoming requests.
      */
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        // Tillåt bara begäranden från localhost
-        config.setAllowedOrigins(List.of("http://localhost:*, http://localhost:3000"));
-        // Tillåt specifika HTTP-metoder
+        // Allow only requests from specific localhost and frontend ports
+        config.setAllowedOrigins(List.of("http://localhost:8080, http://localhost:3000"));
+        // Allow specific HTTP methods
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE"));
-        // Tillåt headers som Authorization och Content-Type
+        // Allow headers such as Authorization and Content-Type
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-
         config.setAllowCredentials(true);
 
-        // Skapa en källa som matchar alla URL-mönster (/**) med ovanstående konfiguration
+        // Create a source that matches all URL patterns (/**) with the above configuration
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
 
         return new CorsFilter(source);
     }
-
 }
+

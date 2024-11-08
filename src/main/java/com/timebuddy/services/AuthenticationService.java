@@ -6,6 +6,7 @@ import com.timebuddy.repositories.UserRepository;
 import com.timebuddy.exceptions.UserAlreadyExistsException;
 import com.timebuddy.exceptions.InvalidLoginException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -27,7 +28,7 @@ public class AuthenticationService {
      * @param passwordEncoder The password encoder to securely handle passwords.
      */
     @Autowired
-    public AuthenticationService(UserRepository userRepo, JwtService jwtService, PasswordEncoder passwordEncoder) {
+    public AuthenticationService(UserRepository userRepo, @Lazy JwtService jwtService, PasswordEncoder passwordEncoder) {
         this.userRepo = userRepo;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;

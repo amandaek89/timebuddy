@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
  * Controller for handling user authentication, including registration and login.
  */
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
@@ -51,10 +51,15 @@ public class AuthenticationController {
     @PostMapping("/login")
     public ApiResponse<String> loginUser(@RequestBody AuthenticationRequest authRequest) {
         try {
+            // Authenticates the user and retrieves the JWT token
             String jwtToken = authenticationService.authenticate(authRequest);
+
+            // Return a successful response with the token
             return new ApiResponse<>(HttpStatus.OK.value(), "Login successful", jwtToken);
         } catch (InvalidLoginException e) {
+            // Return a bad request response if login fails
             return new ApiResponse<>(HttpStatus.BAD_REQUEST.value(), e.getMessage(), null);
         }
     }
+
 }

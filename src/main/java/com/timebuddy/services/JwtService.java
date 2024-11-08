@@ -4,148 +4,142 @@ import com.timebuddy.models.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cglib.core.internal.Function;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 /**
- * Serviceklass för hantering av JWT (JSON Web Tokens).
- * Den här klassen tillhandahåller metoder för att skapa, extrahera och validera JWT.
+ * Service class for handling JSON Web Tokens (JWT).
+ * Provides methods for creating, extracting, and validating JWT tokens.
  */
 @Service
 public class JwtService {
 
-    @Value("${jwt.expiration}")
-    private long jwtExpiration;  // Lösenordets livslängd i millisekunder
+    @Value("${JWT_EXPIRATION}")
+    private long jwtExpiration;  // The expiration time of the token in milliseconds
 
-    @Value("${jwt.secret}")
-    private String secretKey;  // Hemlig nyckel för att signera JWT
+    @Value("${JWT_SECRET}")
+    private String secretKey;  // The secret key used to sign the JWT
+
 
     /**
-     * Extraherar ett krav från tokenet baserat på en given resolver.
+     * Extracts a specific claim from a JWT token using a resolver function.
      *
-     * @param token         JWT-token som krav ska extraheras från.
-     * @param claimsResolver Funktion för att hantera de extraherade kraven.
-     * @param <T>          Typ av värdet som ska extraheras.
-     * @return Det extraherade värdet av typen T.
+     * @param token          The JWT token.
+     * @param claimsResolver The resolver function to extract a specific claim.
+     * @param <T>            The type of the claim to be extracted.
+     * @return The extracted claim.
      */
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);  // Hämta alla krav från tokenet
-        return claimsResolver.apply(claims);  // Tillämpa resolvern för att få det specifika värdet
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
     }
 
     /**
-     * Extraherar alla krav från en JWT-token.
+     * Extracts all claims from a JWT token.
      *
-     * @param token JWT-token som krav ska extraheras från.
-     * @return Claims-objekt som innehåller alla krav.
+     * @param token The JWT token.
+     * @return The Claims object containing all claims.
      */
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(getSigniInKey())  // Ange signeringsnyckeln
+                .setSigningKey(getSignInKey())  // Hämta den rätta signeringsnyckeln här
                 .build()
                 .parseClaimsJws(token)
-                .getBody();  // Hämta kroppen av JWT
+                .getBody();  // Hämta alla claims från token
     }
 
     /**
-     * Extraherar användarnamnet från JWT-tokenet.
+     * Extracts the username (subject) from a JWT token.
      *
-     * @param token JWT-token som användarnamnet ska extraheras från.
-     * @return Användarnamnet som en sträng.
+     * @param token The JWT token.
+     * @return The username as a String.
      */
     public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);  // Extrahera användarnamnet från token
+        return extractClaim(token, Claims::getSubject);
     }
 
     /**
-     * Extraherar utgångsdatumet för JWT-tokenet.
+     * Extracts the expiration date from a JWT token.
      *
-     * @param token JWT-token som utgångsdatumet ska extraheras från.
-     * @return Utgångsdatumet som ett Date-objekt.
+     * @param token The JWT token.
+     * @return The expiration date as a Date object.
      */
-    Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);  // Extrahera utgångsdatumet
+    private Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
     }
 
     /**
-     * Extraherar rollerna från UserDetails-objektet.
+     * Generates a signing key from the secret key.
      *
-     * @param userDetails UserDetails-objektet som innehåller roller.
-     * @return En lista med roller som strängar.
+     * @return The signing key.
      */
-    private Collection<String> extractRoles(UserDetails userDetails) {
-        return userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)  // Hämta varje roll som en sträng
-                .collect(Collectors.toList());
+    public Key getSignInKey() {
+        // Get the secret key as a byte array and create a new SecretKeySpec
+        return new SecretKeySpec(secretKey.getBytes(StandardCharsets.UTF_8), SignatureAlgorithm.HS256.getJcaName());
     }
 
-    /**
-     * Hämtar signeringsnyckeln för JWT.
-     *
-     * @return Nyckel som används för att signera JWT.
-     */
-    private Key getSigniInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);  // Dekoda den hemliga nyckeln
-        return Keys.hmacShaKeyFor(keyBytes);  // Skapa en HMAC SHA-nyckel
-    }
 
     /**
-     * Genererar en JWT-token för en given användare.
+     * Generates a JWT token for a given user.
      *
-     * @param user Användaren för vilken token ska genereras.
-     * @return Den genererade JWT-token som en sträng.
+     * @param user The user object.
+     * @return The generated JWT token as a String.
      */
     public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("id", user.getId());  // Spara användarens ID i kraven
-        return createToken(claims, user.getUsername());  // Skapa och returnera token
+        claims.put("id", user.getId());
+        return createToken(claims, user.getUsername());
     }
 
     /**
-     * Skapar en JWT-token med extra krav och användarnamn.
+     * Creates a JWT token with extra claims and a username.
      *
-     * @param extraClaims En karta med extra krav att inkludera i token.
-     * @param username    Användarnamnet som ska anges i token.
-     * @return Den skapade JWT-token som en sträng.
+     * @param extraClaims Additional claims to include in the token.
+     * @param username    The username to set as the subject of the token.
+     * @return The created JWT token as a String.
      */
     public String createToken(Map<String, Object> extraClaims, String username) {
         return Jwts.builder()
-                .setClaims(extraClaims)  // Sätt de extra kraven
-                .setSubject(username)  // Sätt användarnamnet
-                .setIssuedAt(new Date(System.currentTimeMillis()))  // Sätt utfärdandedatum
+                .setClaims(extraClaims)  // Lägg till extra claims (exempelvis användarens ID)
+                .setSubject(username)    // Ange användarnamn som subject
+                .setIssuedAt(new Date(System.currentTimeMillis()))  // Sätt utställningstid
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))  // Sätt utgångsdatum
-                .signWith(getSigniInKey(), SignatureAlgorithm.HS256)  // Signera token
-                .compact();  // Kompaktisera token
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)  // Signera med den hemliga nyckeln
+                .compact();  // Skapa och returnera den kompakta JWT-token
     }
 
+
     /**
-     * Kontrollerar om JWT-tokenet har gått ut.
+     * Checks if a JWT token has expired.
      *
-     * @param token JWT-token som ska kontrolleras.
-     * @return Sant om tokenet har gått ut, annars falskt.
+     * @param token The JWT token.
+     * @return True if the token has expired, false otherwise.
      */
     public boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());  // Jämför utgångsdatum med nuvarande datum
+        return extractExpiration(token).before(new Date());
     }
 
     /**
-     * Validerar JWT-tokenet genom att kontrollera användarnamn och utgångsdatum.
+     * Validates a JWT token by checking the username and expiration date.
      *
-     * @param token      JWT-token som ska valideras.
-     * @param userDetails UserDetails-objektet för att jämföra användarnamn.
-     * @return Sant om tokenet är giltigt, annars falskt.
+     * @param token       The JWT token.
+     * @param userDetails The UserDetails object to compare the username.
+     * @return True if the token is valid, false otherwise.
      */
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);  // Extrahera användarnamnet från token
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));  // Kontrollera giltighet
+        final String username = extractUsername(token);
+        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
 }
