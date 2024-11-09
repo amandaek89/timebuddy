@@ -47,18 +47,13 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
-                .csrf(csrf -> csrf.disable())  // Disable CSRF protection for stateless apps
-                .cors(withDefaults())           // Aktivera CORS med standardinställningar
+                .csrf(csrf -> csrf.disable())
+                .cors(withDefaults())
                 .authorizeHttpRequests(auth -> {
-                    // Tillåt alla att komma åt /auth/**-vägar utan autentisering
                     auth.requestMatchers("/auth/**").permitAll();
-                    // Tillåt alla att komma åt Swagger UI
                     auth.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll();
-                    // Tillåt användare med roller USER eller ADMIN att komma åt /user/**
-                    auth.requestMatchers("/api/**").hasAnyRole("USER", "ADMIN");
-                    // Tillåt endast användare med rollen ADMIN att komma åt /admin/**
-                    auth.requestMatchers("/admin/**").hasRole("ADMIN");
-                    // Kräver autentisering för alla övriga begäranden
+                    auth.requestMatchers("/api/**").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN");
+                    auth.requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN");
                     auth.anyRequest().authenticated();
                 })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -76,15 +71,11 @@ public class SecurityConfiguration {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        // Allow only requests from specific localhost and frontend ports
         config.setAllowedOrigins(List.of("http://localhost:8080, http://localhost:3000"));
-        // Allow specific HTTP methods
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE"));
-        // Allow headers such as Authorization and Content-Type
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);
 
-        // Create a source that matches all URL patterns (/**) with the above configuration
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
 

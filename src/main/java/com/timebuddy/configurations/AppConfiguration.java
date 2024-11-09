@@ -12,50 +12,52 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.Optional;
 
+/**
+ * Configuration class for application security and user management.
+ * Handles password encryption and user authentication details.
+ */
 @Configuration
 public class AppConfiguration {
 
     private final UserRepository userRepo;
 
     /**
-     * Konstruktor för AppConfig som injicerar UserRepo.
+     * Constructor to inject the UserRepository dependency.
      *
-     * @param userRepo Användarrepository som används för att hantera användardata.
+     * @param userRepo the repository for managing user data.
      */
     @Autowired
     public AppConfiguration(UserRepository userRepo) {
         this.userRepo = userRepo;
     }
 
-
     /**
-     * Skapar en BCryptPasswordEncoder för att kryptera användarlösenord.
+     * Bean for password encryption using BCrypt.
      *
-     * @return en instans av BCryptPasswordEncoder.
+     * @return an instance of BCryptPasswordEncoder.
      */
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // Skapar en PasswordEncoder för att kryptera lösenord
+        return new BCryptPasswordEncoder();
     }
 
     /**
-     * Skapar en UserDetailsService som används för att ladda användardetaljer baserat på användarnamn.
-     * Hämtar användare från UserRepo.
+     * Bean for loading user details based on username.
+     * Fetches user information from the database.
      *
-     * @return en UserDetailsService som hämtar användarinformation från UserRepo.
-     * @throws UsernameNotFoundException om användaren inte finns.
+     * @return a UserDetailsService that retrieves user details from the database.
+     * @throws UsernameNotFoundException if the user is not found in the database.
      */
     @Bean
-    UserDetailsService userDetailsService() {
+    public UserDetailsService userDetailsService() {
         return username -> {
-            // Hämta användaren från userRepo
+            // Attempt to find the user in the database
             Optional<User> user = userRepo.findByUsername(username);
 
-            // Om användaren inte finns, kasta ett undantag
+            // If the user is found, return it as a UserDetails instance
             return user
-                    .map(u -> (UserDetails) u) // Om användaren finns, returnera den som UserDetails
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found")); // Om inte, kasta undantag
+                    .map(u -> (UserDetails) u)
+                    .orElseThrow(() -> new UsernameNotFoundException("User with username '" + username + "' not found."));
         };
     }
-
 }

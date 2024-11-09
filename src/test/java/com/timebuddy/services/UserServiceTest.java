@@ -120,6 +120,6 @@ public class UserServiceTest {
         RuntimeException exception = assertThrows(RuntimeException.class, () -> userService.deleteUser(username));
         assertEquals("User not found", exception.getMessage(), "Exception message should match");
         verify(userRepository, times(1)).findByUsername(username);
-        verify(userRepository, never()).delete(Optional.ofNullable(any()));
+        verify(userRepository, never()).delete(any(User.class));
     }
 }

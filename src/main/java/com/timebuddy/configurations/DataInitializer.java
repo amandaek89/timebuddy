@@ -1,9 +1,10 @@
 package com.timebuddy.configurations;
 
-
 import com.timebuddy.models.Role;
 import com.timebuddy.models.User;
 import com.timebuddy.repositories.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -14,47 +15,65 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * A class responsible for initializing default data in the application database.
+ * This includes creating an admin user if it does not already exist.
+ */
 @Component
 public class DataInitializer {
 
-    private final PasswordEncoder passwordEncoder;
+    private static final Logger logger = LoggerFactory.getLogger(DataInitializer.class);
 
+    private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepo;
 
     /**
-     * Skapar en CommandLineRunner som initialiserar en admin-användare om den inte redan finns i databasen.
+     * Constructor for dependency injection.
      *
-     * @return CommandLineRunner som skapar en admin-användare vid programstart om den saknas.
+     * @param passwordEncoder the password encoder used to securely hash passwords
+     * @param userRepo        the repository for accessing and manipulating user data
      */
     @Autowired
-    DataInitializer(PasswordEncoder passwordEncoder, UserRepository userRepo) {
+    public DataInitializer(PasswordEncoder passwordEncoder, UserRepository userRepo) {
         this.passwordEncoder = passwordEncoder;
         this.userRepo = userRepo;
     }
+
+    /**
+     * Initializes the application with default data upon startup.
+     * Creates an admin user with the username "admin" if it does not already exist.
+     *
+     * @return a CommandLineRunner that executes the initialization logic
+     */
     @Bean
-    CommandLineRunner initAdminUser() {
+    public CommandLineRunner initAdminUser() {
         return args -> {
-            // Kontrollera om användaren med användarnamnet "admin" redan finns
-            if (userRepo.findByUsername("admin") == null) {
-                // Skapa en ny admin-användare
+            logger.info("Checking if admin user exists...");
+
+            // Check if a user with the username "admin" already exists
+            if (!userRepo.findByUsername("admin").isPresent()) {
+                logger.info("Admin user not found. Creating admin user...");
+
+                // Create a new admin user
                 User admin = new User();
                 admin.setUsername("admin");
                 admin.setPassword(passwordEncoder.encode("admin"));
 
-                // Sätt användarroller
+                // Set roles for the admin user
                 Set<Role> roles = new HashSet<>();
                 roles.add(Role.ROLE_ADMIN);
                 admin.setAuthorities(roles);
 
-                // Sätt skapelse- och uppdateringsdatum
+                // Set creation and update timestamps
                 admin.setCreatedAt(new Date());
                 admin.setUpdatedAt(new Date());
 
-                // Spara admin-användaren i databasen
+                // Save the admin user in the database
                 userRepo.save(admin);
-                System.out.println("Admin user created");
+
+                logger.info("Admin user created successfully.");
             } else {
-                System.out.println("Admin user already exists");
+                logger.info("Admin user already exists. No changes made.");
             }
         };
     }
