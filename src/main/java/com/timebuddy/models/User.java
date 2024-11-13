@@ -80,9 +80,6 @@ public class User implements UserDetails {
     public User(long l, String validUser, String validPassword, Date date, Date date1, Object o) {
     }
 
-    public <E> User(String testuser, String password, ArrayList<E> es) {
-    }
-
     public Set<Role> getRoles() {
         return authorities;
     }

@@ -6,9 +6,11 @@ import com.timebuddy.models.TodoList;
 import com.timebuddy.models.User;
 import com.timebuddy.services.TodoListService;
 import com.timebuddy.services.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -80,17 +82,53 @@ public class TodoListController {
         return ResponseEntity.ok(responseDto);
     }
 
+    /**
+     * Retrieves TodoLists for a specific month and year for the currently authenticated user.
+     * This method ensures that the user is authenticated and then fetches TodoLists for
+     * the specified month and year from the service layer.
+     *
+     * @param month The month (1-12) for which TodoLists should be retrieved.
+     * @param year The year for which TodoLists should be retrieved.
+     * @param userDetails The currently authenticated user's details, automatically injected via @AuthenticationPrincipal.
+     * @return A ResponseEntity containing a list of TodoListResponseDto objects for the specified month and year.
+     */
     @GetMapping("/month")
     public ResponseEntity<List<TodoListResponseDto>> getTodoListsForMonth(
             @RequestParam int month,
             @RequestParam int year,
             @AuthenticationPrincipal UserDetails userDetails) {
-
-        // Hämta TodoLists för den inloggade användaren för den specifika månaden
-        List<TodoListResponseDto> todoLists = todoListService.getTodoListsForMonth(month, year, userDetails);
-
-        return ResponseEntity.ok(todoLists);
+        try {
+            // Fetch TodoLists
+            List<TodoListResponseDto> todoLists = todoListService.getTodoListsForMonth(month, year, userDetails);
+            return ResponseEntity.ok(todoLists);
+        } catch (RuntimeException e) {
+            // Handle exceptions (e.g., if user is not found)
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
+    /**
+     * Retrieves TodoLists for the current week of the logged-in user.
+     * The method ensures that the user is authenticated, then fetches the TodoLists
+     * for the current week (Monday to Sunday) and returns them in a response.
+     *
+     * @param userDetails The currently authenticated user details, automatically injected via @AuthenticationPrincipal.
+     * @return A ResponseEntity containing a list of TodoListResponseDto objects for the current week.
+     * @throws RuntimeException If the user is not found or if there is an issue fetching the TodoLists.
+     */
+    @GetMapping("/week")
+    public ResponseEntity<List<TodoListResponseDto>> getTodoListsForCurrentWeek(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            // Call the service method to fetch TodoLists for the current week
+            List<TodoListResponseDto> todoLists = todoListService.getTodoListsForCurrentWeek(userDetails);
+
+            // Return the list of TodoLists as a successful response
+            return ResponseEntity.ok(todoLists);
+        } catch (RuntimeException e) {
+            // Handle exceptions (e.g., if user is not found)
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
 
 }

@@ -1,5 +1,6 @@
 package com.timebuddy.services;
 
+import com.timebuddy.models.Role;
 import com.timebuddy.models.Todo;
 import com.timebuddy.models.User;
 import com.timebuddy.dtos.TodoListResponseDto;
@@ -13,10 +14,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -148,7 +151,10 @@ class TodoListServiceTest {
         when(userDetails.getUsername()).thenReturn(loggedInUsername);
 
         // Mock UserRepository
-        User user = new User("testuser", "password", new ArrayList<>());
+        User user = new User();
+        user.setUsername("testuser");
+        user.setPassword("password");
+        user.setTodoLists(new ArrayList<>());  // Ensure this is initialized
 
         when(userRepository.findByUsername(loggedInUsername)).thenReturn(Optional.of(user));
 
@@ -167,6 +173,7 @@ class TodoListServiceTest {
         todoList2.setDate(LocalDate.of(2024, 11, 13));
         todoList2.setTodos(List.of(todo1, todo2));
 
+        // Mock TodoListRepository
         when(todoListRepository.findByUserAndDateBetween(user, LocalDate.of(2024, 11, 1), LocalDate.of(2024, 11, 30)))
                 .thenReturn(List.of(todoList1, todoList2));
 
@@ -190,6 +197,76 @@ class TodoListServiceTest {
         // Verify repository interactions
         verify(userRepository, times(1)).findByUsername(loggedInUsername);
         verify(todoListRepository, times(1)).findByUserAndDateBetween(user, LocalDate.of(2024, 11, 1), LocalDate.of(2024, 11, 30));
+    }
+
+    @Test
+    void getTodoListsForCurrentWeek_shouldReturnTodoListsForUser() {
+        // Arrange: Mock UserDetails (authenticated user)
+        String username = "testuser";
+        UserDetails userDetails = mock(UserDetails.class);
+        when(userDetails.getUsername()).thenReturn(username);
+
+        // Create a mocked user with a list of authorities (roles)
+        Set<Role> authorities = Set.of(Role.ROLE_USER);  // Assume ROLE_USER for the test user
+        User mockUser = new User(username, "password");
+        mockUser.setRoles(authorities);  // Setting the authorities field (roles)
+
+        // Mock the UserRepository to return the user based on username
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(mockUser));
+
+        // Mock the TodoListRepository to return some TodoLists within the current week
+        LocalDate currentDate = LocalDate.now();
+        LocalDate startOfWeek = currentDate.with(DayOfWeek.MONDAY);
+        LocalDate endOfWeek = startOfWeek.plusDays(6);
+
+        Todo todo1 = new Todo();
+        todo1.setTitle("Todo 1");
+        TodoList todoList1 = new TodoList();
+        todoList1.setDate(startOfWeek);
+        todoList1.setTodos(List.of(todo1));
+
+        Todo todo2 = new Todo();
+        todo2.setTitle("Todo 2");
+        TodoList todoList2 = new TodoList();
+        todoList2.setDate(endOfWeek);
+        todoList2.setTodos(List.of(todo2));
+
+        when(todoListRepository.findByUserAndDateBetween(mockUser, startOfWeek, endOfWeek))
+                .thenReturn(List.of(todoList1, todoList2));
+
+        // Act: Call the method to retrieve TodoLists for the current week
+        List<TodoListResponseDto> result = todoListService.getTodoListsForCurrentWeek(userDetails);
+
+        // Assert: Verify the results
+        assertNotNull(result);
+        assertEquals(2, result.size());  // Two TodoLists should be returned
+
+        // Verify the TodoListResponseDto content
+        TodoListResponseDto dto1 = result.get(0);
+        assertEquals(startOfWeek, dto1.getDate());
+        assertEquals(List.of("Todo 1"), dto1.getTodos());
+
+        TodoListResponseDto dto2 = result.get(1);
+        assertEquals(endOfWeek, dto2.getDate());
+        assertEquals(List.of("Todo 2"), dto2.getTodos());
+    }
+
+    @Test
+    void getTodoListsForCurrentWeek_shouldThrowExceptionIfUserNotFound() {
+        // Arrange: Mock the UserDetails (authenticated user)
+        String username = "nonexistentuser";
+        when(userDetails.getUsername()).thenReturn(username);
+
+        // Mock the UserRepository to return empty, simulating a user not found
+        when(userRepository.findByUsername(username)).thenReturn(Optional.empty());
+
+        // Act & Assert: The method should throw a RuntimeException because the user does not exist
+        assertThrows(RuntimeException.class, () -> {
+            todoListService.getTodoListsForCurrentWeek(userDetails);
+        });
+
+        // Verify that userRepository was called
+        verify(userRepository, times(1)).findByUsername(username);
     }
 }
 
