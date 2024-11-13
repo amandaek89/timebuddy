@@ -77,7 +77,6 @@ public class TodoService {
         return todoRepository.save(todo);
     }
 
-
     /**
      * Retrieves a Todo task by its ID.
      *

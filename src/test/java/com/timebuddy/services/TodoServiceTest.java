@@ -77,7 +77,7 @@ public class TodoServiceTest {
     @Test
     public void testUpdateTodoById_Success() {
         // Arrange
-        Todo updatedTodo = new Todo(1L, "Updated Todo", "Updated Description", true, null, null);
+        Todo updatedTodo = new Todo(1L, "Updated Todo", "Updated Description", false, null, null); // Lägger inte till isDone eftersom det inte ska uppdateras här
         when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
         when(todoRepository.save(updatedTodo)).thenReturn(updatedTodo);
 
@@ -87,10 +87,11 @@ public class TodoServiceTest {
         // Assert
         assertTrue(result.isPresent());
         assertEquals(updatedTodo.getTitle(), result.get().getTitle());
-        assertTrue(result.get().isDone());
+        assertEquals(updatedTodo.getDescription(), result.get().getDescription());
         verify(todoRepository, times(1)).findById(1L);
         verify(todoRepository, times(1)).save(updatedTodo);
     }
+
 
     @Test
     public void testUpdateTodoById_NotFound() {

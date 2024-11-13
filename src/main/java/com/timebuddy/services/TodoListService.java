@@ -5,6 +5,9 @@ import com.timebuddy.dtos.TodoListResponseDto;
 import com.timebuddy.models.TodoList;
 import com.timebuddy.models.User;
 import com.timebuddy.repositories.TodoListRepository;
+import com.timebuddy.repositories.UserRepository;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -21,13 +24,17 @@ public class TodoListService {
 
     private final TodoListRepository todoListRepository;
 
+    private final UserRepository userRepository;
+
     /**
      * Constructor for TodoListService.
      *
      * @param todoListRepository The repository used to interact with the TodoList database table.
      */
-    public TodoListService(TodoListRepository todoListRepository) {
+
+    public TodoListService(TodoListRepository todoListRepository, UserRepository userRepository) {
         this.todoListRepository = todoListRepository;
+        this.userRepository = userRepository;
     }
     /**
      * Retrieves an existing TodoList or creates a new one for the specified user and date.
@@ -71,5 +78,29 @@ public class TodoListService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Hämtar TodoLists för den inloggade användaren och månad.
+     *
+     * @param month Månad för vilken TodoLists ska hämtas.
+     * @param year År för vilken TodoLists ska hämtas.
+     * @param userDetails Den inloggade användaren.
+     * @return Lista av TodoLists som är kopplade till den specifika månaden.
+     */
+    public List<TodoListResponseDto> getTodoListsForMonth(int month, int year, @AuthenticationPrincipal UserDetails userDetails) {
+        // Hämta användaren baserat på användarnamn från inloggad användare
+        String loggedInUsername = userDetails.getUsername();
 
+        User user = userRepository.findByUsername(loggedInUsername)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        LocalDate startOfMonth = LocalDate.of(year, month, 1);
+        LocalDate endOfMonth = startOfMonth.withDayOfMonth(startOfMonth.lengthOfMonth());
+
+        // Hämta alla TodoLists för den inloggade användaren inom angiven månad
+        List<TodoList> todoLists = todoListRepository.findByUserAndDateBetween(user, startOfMonth, endOfMonth);
+
+        return todoLists.stream()
+                .map(todoList -> new TodoListResponseDto(todoList.getDate(), todoList.getTodos().stream().map(Todo::getTitle).collect(Collectors.toList())))
+                .collect(Collectors.toList());
+    }
 }

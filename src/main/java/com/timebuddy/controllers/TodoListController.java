@@ -8,6 +8,7 @@ import com.timebuddy.services.TodoListService;
 import com.timebuddy.services.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -79,7 +80,17 @@ public class TodoListController {
         return ResponseEntity.ok(responseDto);
     }
 
+    @GetMapping("/month")
+    public ResponseEntity<List<TodoListResponseDto>> getTodoListsForMonth(
+            @RequestParam int month,
+            @RequestParam int year,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
+        // Hämta TodoLists för den inloggade användaren för den specifika månaden
+        List<TodoListResponseDto> todoLists = todoListService.getTodoListsForMonth(month, year, userDetails);
+
+        return ResponseEntity.ok(todoLists);
+    }
 
 
 }

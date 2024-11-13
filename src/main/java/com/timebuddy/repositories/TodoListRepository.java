@@ -40,5 +40,15 @@ public interface TodoListRepository extends JpaRepository<TodoList, Long> {
      * @return A list of TodoLists associated with the user.
      */
     List<TodoList> findByUser(User user);
+
+    /**
+     * Retrieves all TodoLists for a specific user and date range.
+     *
+     * @param user The user whose TodoLists are to be retrieved.
+     * @param startOfMonth The start date of the month.
+     * @param endOfMonth The end date of the month.
+     * @return A list of TodoLists associated with the user and date range.
+     */
+    List<TodoList> findByUserAndDateBetween(User user, LocalDate startOfMonth, LocalDate endOfMonth);
 }
 

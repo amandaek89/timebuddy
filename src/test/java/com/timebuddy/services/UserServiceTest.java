@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -94,12 +95,12 @@ class UserServiceTest {
         User user1 = new User();
         user1.setId(1L);
         user1.setUsername("user1");
-        user1.setAuthorities(Set.of(Role.valueOf("ROLE_USER")));
+        user1.setAuthorities(Set.of(Role.ROLE_USER));  // Använd direkt Role enum här
 
         User user2 = new User();
         user2.setId(2L);
         user2.setUsername("user2");
-        user2.setAuthorities(Set.of(Role.valueOf("ROLE_ADMIN")));
+        user2.setAuthorities(Set.of(Role.ROLE_ADMIN));  // Använd direkt Role enum här
 
         when(userRepo.findAll()).thenReturn(List.of(user1, user2));
 
@@ -108,11 +109,21 @@ class UserServiceTest {
 
         // Assert
         assertEquals(2, users.size());
+
+        // Jämför användarnamn och roller (konvertera till String via getAuthority)
         assertEquals("user1", users.get(0).getUsername());
-        assertIterableEquals(Set.of("ROLE_USER"), users.get(0).getAuthorities());
+        assertIterableEquals(
+                Set.of("ROLE_USER"),
+                users.get(0).getAuthorities().stream().map(Role::getAuthority).collect(Collectors.toSet()) // Konvertera Role till String
+        );
+
         assertEquals("user2", users.get(1).getUsername());
-        assertIterableEquals(Set.of("ROLE_ADMIN"), users.get(1).getAuthorities());
+        assertIterableEquals(
+                Set.of("ROLE_ADMIN"),
+                users.get(1).getAuthorities().stream().map(Role::getAuthority).collect(Collectors.toSet()) // Konvertera Role till String
+        );
     }
+
 
     @Test
     void setRoles_shouldUpdateRolesWhenUserFound() {
@@ -120,9 +131,9 @@ class UserServiceTest {
         User user = new User();
         user.setId(1L);
         user.setUsername("testuser");
-        user.setAuthorities(Set.of(Role.valueOf("ROLE_USER")));
+        user.setAuthorities(Set.of(Role.ROLE_USER));  // Använd Role enum direkt här
 
-        UserDto userDto = new UserDto(1L, "testuser", Set.of(Role.valueOf("ROLE_ADMIN")));
+        UserDto userDto = new UserDto(1L, "testuser", Set.of(Role.ROLE_ADMIN));  // Använd Role enum direkt här
 
         when(userRepo.findByUsername("testuser")).thenReturn(Optional.of(user));
         when(userRepo.save(user)).thenReturn(user); // Mockar att `save` returnerar användaren
@@ -133,9 +144,22 @@ class UserServiceTest {
         // Assert
         assertTrue(result.isPresent());
         assertEquals("testuser", result.get().getUsername());
-        assertIterableEquals(Set.of("ROLE_ADMIN"), result.get().getAuthorities());
+
+        // Här konverterar vi både det förväntade och faktiska resultatet till Set<String> genom getAuthority()
+        Set<String> expectedRoles = userDto.getAuthorities().stream()
+                .map(Role::getAuthority) // Konverterar Role till String via getAuthority()
+                .collect(Collectors.toSet());
+
+        Set<String> actualRoles = result.get().getAuthorities().stream()
+                .map(Role::getAuthority) // Konverterar Role till String via getAuthority()
+                .collect(Collectors.toSet());
+
+        assertIterableEquals(expectedRoles, actualRoles); // Jämför Set<String> i stället för Set<Role>
+
         verify(userRepo).save(user); // Verifierar att `save` anropas
     }
+
+
 
     @Test
     void setRoles_shouldReturnEmptyWhenUserNotFound() {
