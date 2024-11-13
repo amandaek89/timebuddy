@@ -1,6 +1,7 @@
 package com.timebuddy.models;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -31,6 +32,8 @@ public class Todo {
     /**
      * The title of the Todo task.
      */
+    @Column(nullable = false)
+    @Size(min = 1, max = 100)
     private String title;
 
     /**
@@ -49,5 +52,12 @@ public class Todo {
     @ManyToOne
     @JoinColumn(name = "todolist_id") // Links the Todo to a specific TodoList
     private TodoList todoList;
+
+    /**
+        * A reference to the User who created this Todo.
+        */
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
 }

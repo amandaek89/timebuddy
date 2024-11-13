@@ -1,10 +1,16 @@
 package com.timebuddy.dtos;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 /**
  * Data Transfer Object for outgoing user data.
  */
+@NoArgsConstructor
+@AllArgsConstructor
 @Data
 public class UserResponseDto {
 
@@ -14,10 +20,6 @@ public class UserResponseDto {
     /** The username of the user. */
     private String username;
 
-    public UserResponseDto(long id, String username) {
-    }
-
-    public UserResponseDto() {
-
-    }
+    /** The roles assigned to the user. */
+    private List<String> roles;
 }

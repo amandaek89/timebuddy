@@ -1,23 +1,22 @@
 package com.timebuddy.models;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
+import lombok.*;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Represents a TodoList entity that contains a list of todos.
  * This class is mapped to the "todolist" table in the database.
- * A TodoList is associated with a specific user, and it holds multiple todos.
+ * A TodoList is associated with a specific user and holds multiple todos.
  */
 @Entity
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "todolist") // Specifies the table name "todolist" in the database.
+@Table(name = "todolist")
 public class TodoList {
 
     /** The unique identifier for the TodoList. */
@@ -25,8 +24,9 @@ public class TodoList {
     @GeneratedValue(strategy = GenerationType.IDENTITY) // Auto-generates the ID value.
     private Long id;
 
-    /** The title of the TodoList. */
-    private String title;
+    /** The date of the TodoList. */
+    @Column(nullable = false)
+    private LocalDate date; // Using LocalDate for the date to make it more standardized.
 
     /** The user who created the TodoList. */
     @ManyToOne
@@ -34,7 +34,8 @@ public class TodoList {
     private User user;
 
     /** The list of todos that belong to the TodoList. */
-    @OneToMany(mappedBy = "todoList", cascade = CascadeType.ALL) // Cascades all operations to related Todo entities.
-    private List<Todo> todos;
+    @OneToMany(mappedBy = "todoList", cascade = CascadeType.ALL, orphanRemoval = true) // Cascades all operations to related Todo entities.
+    private List<Todo> todos = new ArrayList<>(); // Initialize with an empty list.
 
 }
+

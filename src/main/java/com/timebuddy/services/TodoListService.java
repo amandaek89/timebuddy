@@ -1,15 +1,20 @@
 package com.timebuddy.services;
 
+import com.timebuddy.models.Todo;
+import com.timebuddy.dtos.TodoListResponseDto;
 import com.timebuddy.models.TodoList;
+import com.timebuddy.models.User;
 import com.timebuddy.repositories.TodoListRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
- * Service class for managing TodoList operations.
- * Provides methods to create, update, delete, and retrieve TodoLists.
+ * Service class for managing TodoLists.
  */
 @Service
 public class TodoListService {
@@ -24,70 +29,47 @@ public class TodoListService {
     public TodoListService(TodoListRepository todoListRepository) {
         this.todoListRepository = todoListRepository;
     }
-
     /**
-     * Creates a new TodoList.
+     * Retrieves an existing TodoList or creates a new one for the specified user and date.
+     * If no TodoList exists for the given date, a new TodoList is created, saved, and returned.
      *
-     * @param todoList The TodoList to be created.
-     * @return The created TodoList, with its generated ID.
+     * @param user The user whose TodoList is being retrieved or created.
+     * @param date The date for the TodoList.
+     * @return The existing or newly created TodoList entity.
      */
-    public TodoList createTodoList(TodoList todoList) {
-        return todoListRepository.save(todoList);
+    public TodoList getOrCreateTodoList(User user, LocalDate date) {
+        // Kontrollera om en TodoList redan finns för användaren och datumet
+        Optional<TodoList> existingTodoList = todoListRepository.findByUserAndDate(user, date);
+
+        // Om den inte finns, skapa en ny TodoList
+        if (existingTodoList.isEmpty()) {
+            TodoList newTodoList = new TodoList();
+            newTodoList.setUser(user);  // Länka användaren
+            newTodoList.setDate(date);  // Sätt datumet
+            newTodoList.setTodos(new ArrayList<>());  // Initialisera tom lista
+
+            // Spara och returnera den nya TodoList
+            return todoListRepository.save(newTodoList);
+        }
+
+        // Returnera den existerande TodoList
+        return existingTodoList.get();
     }
 
     /**
-     * Retrieves a list of TodoLists for a specific user.
+     * Retrieves all TodoLists for a specific user.
      *
-     * @param userId The ID of the user whose TodoLists are to be retrieved.
-     * @return A list of TodoLists belonging to the user.
+     * @param user The user whose TodoLists are to be retrieved.
+     * @return A list of TodoLists associated with the user.
      */
-    public List<TodoList> getTodoListsForUser(Long userId) {
-        return todoListRepository.findByUserId(userId);
+    public List<TodoListResponseDto> getTodoListsForUser(User user) {
+        List<TodoList> todoLists = todoListRepository.findByUser(user);
+        return todoLists.stream()
+                .map(todoList -> new TodoListResponseDto(todoList.getDate(), todoList.getTodos().stream()
+                        .map(Todo::getTitle)
+                        .collect(Collectors.toList())))
+                .collect(Collectors.toList());
     }
 
-    /**
-     * Retrieves a TodoList by its ID.
-     *
-     * @param id The ID of the TodoList to be retrieved.
-     * @return An Optional containing the TodoList if found, or empty if not found.
-     */
-    public Optional<TodoList> getTodoListById(Long id) {
-        return todoListRepository.findById(id);
-    }
 
-    /**
-     * Retrieves a TodoList by its title.
-     *
-     * @param title The title of the TodoList.
-     * @return An Optional containing the TodoList if found, or an empty Optional if not found.
-     */
-    public Optional<TodoList> getTodoListByTitle(String title) {
-        return todoListRepository.findByTitle(title);
-    }
-
-    /**
-     * Updates an existing TodoList.
-     *
-     * @param id The ID of the TodoList to be updated.
-     * @param updatedTodoList The updated TodoList object containing new values.
-     * @return The updated TodoList, or an empty Optional if the TodoList was not found.
-     */
-    public Optional<TodoList> updateTodoList(Long id, TodoList updatedTodoList) {
-        return todoListRepository.findById(id)
-                .map(todoList -> {
-                    todoList.setTitle(updatedTodoList.getTitle());
-                    // You could also update other fields if necessary
-                    return todoListRepository.save(todoList);
-                });
-    }
-
-    /**
-     * Deletes a TodoList by its ID.
-     *
-     * @param id The ID of the TodoList to be deleted.
-     */
-    public void deleteTodoList(Long id) {
-        todoListRepository.deleteById(id);
-    }
 }
-

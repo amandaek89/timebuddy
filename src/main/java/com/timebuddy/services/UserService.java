@@ -1,6 +1,7 @@
 package com.timebuddy.services;
 
 import com.timebuddy.dtos.UpdatePasswordDto;
+import com.timebuddy.dtos.UserDto;
 import com.timebuddy.dtos.UserRequestDto;
 import com.timebuddy.dtos.UserResponseDto;
 import com.timebuddy.models.User;
@@ -30,7 +31,7 @@ public class UserService {
     /**
      * Constructor for UserService.
      *
-     * @param userRepo The repository used to interact with the User database table.
+     * @param userRepo        The repository used to interact with the User database table.
      * @param passwordEncoder The password encoder used to hash and verify passwords.
      */
     public UserService(UserRepository userRepo, PasswordEncoder passwordEncoder) {
@@ -39,148 +40,86 @@ public class UserService {
     }
 
     /**
-     * Retrieves all users from the database and converts them to UserResponseDto objects.
+     * Hämtar alla användare från databasen och konverterar dem till UserDto-objekt.
      *
-     * @return A list of UserResponseDto representing all users.
+     * @return En lista av UserDto som representerar alla användare.
      */
-    public List<UserResponseDto> getAllUsers() {
-        List<User> users = userRepo.findAll();
-        // Konvertera varje User till UserDto och samla dem i en lista
-        return users.stream()
-                .map(user -> new UserResponseDto(user.getId(), user.getUsername()))
+    public List<UserDto> getAllUsers() {
+        return userRepo.findAll().stream()
+                .map(user -> new UserDto(user.getId(), user.getUsername(), user.getAuthorities()))
                 .collect(Collectors.toList());
     }
 
     /**
-     * Retrieves a user by their ID and returns a UserResponseDto.
+     * Hämtar en användare baserat på användarnamnet och returnerar den som UserDto.
      *
-     * @param id The ID of the user to be retrieved.
-     * @return An Optional containing the UserResponseDto if found, otherwise an empty Optional.
+     * @param username Användarnamnet för användaren som ska hämtas.
+     * @return En Optional som innehåller UserDto om användaren hittas, annars tomt.
      */
-    public Optional<UserResponseDto> findUserById(Long id) {
-        return userRepo.findById(id)
-                .map(this::convertToResponseDto);
-    }
-
-    /**
-     * Retrieves a user by their username and returns a UserResponseDto.
-     *
-     * @param username The username of the user to be retrieved.
-     * @return An Optional containing the UserResponseDto if found, otherwise an empty Optional.
-     */
-    public Optional<UserResponseDto> loadUserByUsername(String username) {
+    public User getUserByUsername(String username) {
         return userRepo.findByUsername(username)
-                .map(this::convertToResponseDto);
+                .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
+    }
+
+
+    /**
+     * Uppdaterar lösenordet för en användare om användaren hittas.
+     *
+     * @param username             Användarnamnet för användaren vars lösenord ska uppdateras.
+     * @param newEncryptedPassword Det nya krypterade lösenordet.
+     * @return Ett meddelande som indikerar resultatet.
+     */
+    public String updatePassword(String username, String newEncryptedPassword) {
+        return userRepo.findByUsername(username)
+                .map(user -> {
+                    user.setPassword(newEncryptedPassword);
+                    user.setUpdatedAt(new Date());
+                    userRepo.save(user);
+                    return "Password updated";
+                })
+                .orElse("User not found");
     }
 
     /**
-     * Updates the user's information.
+     * Uppdaterar rollerna för en användare om användaren hittas.
      *
-     * @param id            The ID of the user to be updated.
-     * @param updatedUser   The updated UserRequestDto containing the new values.
-     * @return The updated UserResponseDto, or an empty Optional if no user is found with the given ID.
+     * @param userDto DTO som innehåller användarens nya roller.
+     * @return En Optional som innehåller den uppdaterade UserDto, eller tomt om användaren inte hittas.
      */
-    public Optional<UserResponseDto> updateUser(Long id, UserRequestDto updatedUser) {
-        return userRepo.findById(id)
+    public Optional<UserDto> setRoles(UserDto userDto) {
+        return userRepo.findByUsername(userDto.getUsername())
                 .map(user -> {
-                    // Update user fields
-                    user.setUsername(updatedUser.getUsername());
-                    if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
-                        user.setPassword(updatedUser.getPassword()); // Only update password if provided
-                    }
-                    user.setUpdatedAt(new java.util.Date()); // Set the updated timestamp
-                    User updatedUserEntity = userRepo.save(user);
-                    return convertToResponseDto(updatedUserEntity);
+                    user.setAuthorities(userDto.getAuthorities());
+                    user.setUpdatedAt(new Date());
+                    User updatedUser = userRepo.save(user);
+                    return new UserDto(updatedUser.getId(), updatedUser.getUsername(), updatedUser.getAuthorities());
                 });
     }
 
     /**
-     * Updates the user's password.
+     * Raderar en användare från databasen baserat på användarnamn.
      *
-     * @param updatePasswordDto The DTO containing the username and new password.
-     *                          The new password should be encrypted before calling this method.
-     */
-
-
-    public void updatePassword(String username, String encryptedPassword) {
-        // Hämta användaren från databasen
-        Optional<User> userOptional = userRepo.findByUsername(username);
-        if (userOptional.isPresent()) {
-            User user = userOptional.get();
-
-            // Uppdatera användarens lösenord
-            user.setPassword(encryptedPassword);
-            user.setUpdatedAt(new Date());
-
-            // Spara uppdaterad användare
-            userRepo.save(user);
-        } else {
-            throw new RuntimeException("User not found");
-        }
-    }
-
-
-    public Optional<UserRequestDto> setRoles(UserRequestDto userRequestDto) {
-        // Hämta användaren som ska uppdateras
-        Optional<User> userToUpdateOptional = userRepo.findByUsername(userRequestDto.getUsername());
-
-        // Kontrollera om användaren existerar
-        if (userToUpdateOptional.isEmpty()) {
-            return Optional.empty();  // Returnera tom Optional om användaren inte hittas
-        }
-
-        // Extrahera användaren
-        User userToUpdate = userToUpdateOptional.get();
-
-        // Uppdatera användarens roller och det uppdaterade datumet
-        userToUpdate.setRoles(userRequestDto.getAuthorities()); // Kontrollera att User har en setRoles-metod
-        userToUpdate.setUpdatedAt(new Date());
-
-        // Spara den uppdaterade användaren
-        User updatedUser = userRepo.save(userToUpdate);
-
-        // Returnera den uppdaterade användaren som UserRequestDto
-        return Optional.of(new UserRequestDto(updatedUser.getUsername(), null, updatedUser.getRoles()));
-    }
-
-
-
-    /**
-     * Deletes a user by their ID.
-     *
-     * @param username The ID of the user to be deleted.
+     * @param username Användarnamnet för den användare som ska raderas.
+     * @return Ett meddelande som indikerar resultatet.
      */
     public String deleteUser(String username) {
-        // Hämta användaren som ska raderas
-        Optional<User> user = userRepo.findByUsername(username);
-        if (user.isPresent()) {
-            userRepo.delete(user.get());  // Ta bort användaren från databasen
-        } else {
-            throw new RuntimeException("User not found");  // Kasta ett undantag om användaren inte hittas
-        }
-        return "User deleted";  // Returnera framgångsmeddelande
+        return userRepo.findByUsername(username)
+                .map(user -> {
+                    userRepo.delete(user);
+                    return "User deleted";
+                })
+                .orElse("User not found");
     }
-
 
     /**
-     * Converts a User entity to a UserResponseDto.
+     * Hämtar lösenordet för en användare baserat på användarnamn.
      *
-     * @param user The User entity to convert.
-     * @return The corresponding UserResponseDto.
+     * @param username Användarnamnet för användaren vars lösenord ska hämtas.
+     * @return En sträng som innehåller användarens lösenord eller ett felmeddelande.
      */
-    private UserResponseDto convertToResponseDto(User user) {
-        UserResponseDto userResponseDto = new UserResponseDto();
-        userResponseDto.setId(user.getId());
-        userResponseDto.setUsername(user.getUsername());
-        return userResponseDto;
-    }
-
     public String getPassword(String username) {
         return userRepo.findByUsername(username)
                 .map(User::getPassword)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElse("User not found");
     }
 }
-
-
-

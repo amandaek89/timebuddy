@@ -1,18 +1,23 @@
 package com.timebuddy.services;
 
+import com.timebuddy.models.Todo;
+import com.timebuddy.models.User;
+import com.timebuddy.dtos.TodoListResponseDto;
 import com.timebuddy.models.TodoList;
 import com.timebuddy.repositories.TodoListRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Optional;
+import java.time.LocalDate;
+import java.util.List;
 
-import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class TodoListServiceTest {
 
     @Mock
@@ -21,54 +26,46 @@ class TodoListServiceTest {
     @InjectMocks
     private TodoListService todoListService;
 
-    private TodoList todoList;
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-        todoList = new TodoList(1L, "My TodoList", null, null); // Exempeldata
-    }
-
     @Test
-    void testCreateTodoList() {
-        when(todoListRepository.save(todoList)).thenReturn(todoList);
+    void getTodoListsForUser_shouldReturnTodoListResponseDtos() {
+        // Arrange: Mock User
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("testuser");
 
-        TodoList createdTodoList = todoListService.createTodoList(todoList);
+        // Mock TodoList and Todo items
+        Todo todo1 = new Todo();
+        todo1.setTitle("Task 1");
 
-        assertNotNull(createdTodoList);
-        assertEquals("My TodoList", createdTodoList.getTitle());
-        verify(todoListRepository, times(1)).save(todoList);
-    }
+        Todo todo2 = new Todo();
+        todo2.setTitle("Task 2");
 
-    @Test
-    void testGetTodoListById() {
-        when(todoListRepository.findById(1L)).thenReturn(Optional.of(todoList));
+        TodoList todoList1 = new TodoList();
+        todoList1.setDate(LocalDate.of(2024, 11, 12));
+        todoList1.setTodos(List.of(todo1));
 
-        Optional<TodoList> foundTodoList = todoListService.getTodoListById(1L);
+        TodoList todoList2 = new TodoList();
+        todoList2.setDate(LocalDate.of(2024, 11, 13));
+        todoList2.setTodos(List.of(todo1, todo2));
 
-        assertTrue(foundTodoList.isPresent());
-        assertEquals("My TodoList", foundTodoList.get().getTitle());
-    }
+        // Mock repository behavior
+        when(todoListRepository.findByUser(user)).thenReturn(List.of(todoList1, todoList2));
 
-    @Test
-    void testUpdateTodoList() {
-        TodoList updatedTodoList = new TodoList(1L, "Updated TodoList", null, null);
-        when(todoListRepository.findById(1L)).thenReturn(Optional.of(todoList));
-        when(todoListRepository.save(todoList)).thenReturn(updatedTodoList);
+        // Act: Call the method
+        List<TodoListResponseDto> result = todoListService.getTodoListsForUser(user);
 
-        Optional<TodoList> updated = todoListService.updateTodoList(1L, updatedTodoList);
+        // Assert: Verify results
+        assertNotNull(result);
+        assertEquals(2, result.size());
 
-        assertTrue(updated.isPresent());
-        assertEquals("Updated TodoList", updated.get().getTitle());
-    }
+        TodoListResponseDto responseDto1 = result.get(0);
+        assertEquals(LocalDate.of(2024, 11, 12), responseDto1.getDate());
+        assertEquals(List.of("Task 1"), responseDto1.getTodos());
 
-    @Test
-    void testDeleteTodoList() {
-        doNothing().when(todoListRepository).deleteById(1L);
-
-        todoListService.deleteTodoList(1L);
-
-        verify(todoListRepository, times(1)).deleteById(1L);
+        TodoListResponseDto responseDto2 = result.get(1);
+        assertEquals(LocalDate.of(2024, 11, 13), responseDto2.getDate());
+        assertEquals(List.of("Task 1", "Task 2"), responseDto2.getTodos());
     }
 }
+
 

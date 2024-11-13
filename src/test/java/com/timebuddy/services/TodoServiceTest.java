@@ -1,5 +1,6 @@
 package com.timebuddy.services;
 
+import com.timebuddy.exceptions.TodoNotFoundException;
 import com.timebuddy.models.Todo;
 import com.timebuddy.repositories.TodoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +30,7 @@ public class TodoServiceTest {
         MockitoAnnotations.openMocks(this);
 
         // Create a new Todo for testing
-        todo = new Todo(1L, "Test Todo", "Test Description", false, null);
+        todo = new Todo(1L, "Test Todo", "Test Description", false, null, null);
     }
 
     @Test
@@ -76,7 +77,7 @@ public class TodoServiceTest {
     @Test
     public void testUpdateTodoById_Success() {
         // Arrange
-        Todo updatedTodo = new Todo(1L, "Updated Todo", "Updated Description", true, null);
+        Todo updatedTodo = new Todo(1L, "Updated Todo", "Updated Description", true, null, null);
         when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
         when(todoRepository.save(updatedTodo)).thenReturn(updatedTodo);
 
@@ -94,7 +95,7 @@ public class TodoServiceTest {
     @Test
     public void testUpdateTodoById_NotFound() {
         // Arrange
-        Todo updatedTodo = new Todo(1L, "Updated Todo", "Updated Description", true, null);
+        Todo updatedTodo = new Todo(1L, "Updated Todo", "Updated Description", true, null, null);
         when(todoRepository.findById(1L)).thenReturn(Optional.empty());
 
         // Act
@@ -107,11 +108,34 @@ public class TodoServiceTest {
 
     @Test
     public void testDeleteTodo_Success() {
+        // Arrange
+        Todo todo = new Todo();
+        todo.setId(1L);
+        todo.setTitle("Test Todo");
+        todo.setDescription("Description");
+
+        // Mocka att todoRepository hittar en Todo när den efterfrågas
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
+
         // Act
         todoService.deleteTodo(1L);
 
         // Assert
         verify(todoRepository, times(1)).deleteById(1L);
+    }
+
+    @Test
+    public void testDeleteTodo_NotFound() {
+        // Arrange
+        when(todoRepository.findById(1L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        TodoNotFoundException exception = assertThrows(TodoNotFoundException.class, () -> {
+            todoService.deleteTodo(1L);
+        });
+
+        // Verifiera att rätt exception kastades
+        assertEquals("Todo task with ID 1 not found.", exception.getMessage());
     }
 
     @Test

@@ -8,7 +8,6 @@ public class TodoMapper {
 
     public static TodoResponseDto toResponseDto(Todo todo) {
         TodoResponseDto dto = new TodoResponseDto();
-        dto.setId(todo.getId());
         dto.setTitle(todo.getTitle());
         dto.setDescription(todo.getDescription());
         dto.setDone(todo.isDone());
@@ -19,7 +18,6 @@ public class TodoMapper {
         Todo todo = new Todo();
         todo.setTitle(dto.getTitle());
         todo.setDescription(dto.getDescription());
-        todo.setDone(dto.isDone());
         return todo;
     }
 }

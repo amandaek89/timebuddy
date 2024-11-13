@@ -1,13 +1,20 @@
 package com.timebuddy.services;
 
+import com.timebuddy.dtos.TodoRequestDto;
+import com.timebuddy.dtos.TodoResponseDto;
+import com.timebuddy.exceptions.TodoNotFoundException;
 import com.timebuddy.models.Todo;
+import com.timebuddy.models.TodoList;
+import com.timebuddy.models.User;
+import com.timebuddy.repositories.TodoListRepository;
 import com.timebuddy.repositories.TodoRepository;
-import org.hibernate.query.Page;
-import org.springframework.data.domain.PageRequest;
+import com.timebuddy.repositories.UserRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Service class for managing Todo tasks.
@@ -17,14 +24,24 @@ import java.util.Optional;
 public class TodoService {
 
     private final TodoRepository todoRepository;
+    private final TodoListService todoListService;
+    private final UserRepository userRepository;
 
+    private final TodoListRepository todoListRepository;
     /**
      * Constructor for TodoService.
      *
-     * @param todoRepository The repository used to interact with the Todo database table.
+     * @param todoRepository
+     * @param todoListService
+     * @param userRepository
+     * @param todoListRepository
      */
-    public TodoService(TodoRepository todoRepository) {
+    public TodoService(TodoRepository todoRepository, TodoListService todoListService,
+                       UserRepository userRepository, TodoListRepository todoListRepository) {
         this.todoRepository = todoRepository;
+        this.todoListService = todoListService;
+        this.userRepository = userRepository;
+        this.todoListRepository = todoListRepository;
     }
 
     /**
@@ -38,6 +55,30 @@ public class TodoService {
     }
 
     /**
+     * Adds a new Todo task to the TodoList for the specified user on a specific date.
+     *
+     * @param user          The authenticated user to which the Todo belongs.
+     * @param date          The date for which the Todo task is created.
+     * @param todoRequestDto The request data containing title and description for the Todo task.
+     * @return The created Todo task.
+     */
+    public Todo addTodoToSpecificDay(User user, LocalDate date, TodoRequestDto todoRequestDto) {
+        // Hämta eller skapa TodoList för det specifika datumet
+        TodoList todoList = todoListService.getOrCreateTodoList(user, date);
+
+        // Skapa en ny Todo med information från TodoRequestDto
+        Todo todo = new Todo();
+        todo.setTitle(todoRequestDto.getTitle());
+        todo.setDescription(todoRequestDto.getDescription());
+        todo.setDone(false);  // Ny Todo är inte klar som standard
+        todo.setTodoList(todoList);  // Koppla Todo till TodoList för det aktuella datumet
+
+        // Spara Todo och returnera den
+        return todoRepository.save(todo);
+    }
+
+
+    /**
      * Retrieves a Todo task by its ID.
      *
      * @param id The ID of the Todo task to be retrieved.
@@ -48,13 +89,38 @@ public class TodoService {
     }
 
     /**
-     * Retrieves all Todo tasks associated with a specific TodoList.
+     * Retrieves a Todo task by its title.
      *
-     * @param todoListId The ID of the TodoList whose Todos are to be retrieved.
-     * @return A list of Todo tasks belonging to the specified TodoList.
+     * @param title The title of the Todo task to be retrieved.
+     * @return A list of Todo tasks matching the title, or an empty list if none are found.
      */
-    public List<Todo> getTodosByTodoListId(Long todoListId) {
-        return todoRepository.findByTodoListId(todoListId);
+    public List<Todo> getTodoByTitle(String title) {
+        return todoRepository.findByTitle(title);
+    }
+
+    /**
+     * Retrieves all Todos for a specific user and date by finding the associated TodoList.
+     * If no TodoList exists for the specified date, an exception is thrown.
+     *
+     * @param user The user whose Todos are being retrieved.
+     * @param date The date for which Todos are to be retrieved.
+     * @return A list of Todos associated with the specified user and date.
+     * @throws RuntimeException if no TodoList is found for the given user and date.
+     */
+    public List<TodoResponseDto> getTodosForDate(User user, LocalDate date) {
+        // Retrieve the TodoList for the user and date
+        TodoList todoList = todoListRepository.findByUserAndDate(user, date)
+                .orElseThrow(() -> new RuntimeException("TodoList not found for this date"));
+
+        // Map the Todos to TodoResponseDto
+        return todoList.getTodos().stream()
+                .map(todo -> new TodoResponseDto(
+                        todo.getTitle(),
+                        todo.getDescription(),
+                        todo.isDone(),
+                        todo.getTodoList().getDate()
+                ))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -69,7 +135,6 @@ public class TodoService {
                 .map(todo -> {
                     todo.setTitle(updatedTodo.getTitle());
                     todo.setDescription(updatedTodo.getDescription());
-                    todo.setDone(updatedTodo.isDone());
                     return todoRepository.save(todo);
                 });
     }
@@ -78,8 +143,15 @@ public class TodoService {
      * Deletes a Todo task by its ID.
      *
      * @param id The ID of the Todo task to be deleted.
+     * @throws TodoNotFoundException If the Todo task with the given ID does not exist.
      */
-    public void deleteTodo(Long id) {
+    public void deleteTodo(Long id) throws TodoNotFoundException {
+        Optional<Todo> todo = todoRepository.findById(id);
+
+        if (todo.isEmpty()) {
+            throw new TodoNotFoundException("Todo task with ID " + id + " not found.");
+        }
+
         todoRepository.deleteById(id);
     }
 

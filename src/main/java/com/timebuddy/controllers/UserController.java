@@ -1,6 +1,7 @@
 package com.timebuddy.controllers;
 
 import com.timebuddy.dtos.UpdatePasswordDto;
+import com.timebuddy.dtos.UserDto;
 import com.timebuddy.dtos.UserRequestDto;
 import com.timebuddy.dtos.UserResponseDto;
 import com.timebuddy.models.User;
@@ -10,12 +11,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Controller for managing user data.
@@ -36,127 +41,88 @@ public class UserController {
         this.passwordEncoder = passwordEncoder;
     }
 
-    /**
-     * Retrieves a user by their ID.
-     *
-     * @param id The ID of the user to retrieve.
-     * @return ResponseEntity with the user data or 404 if not found.
-     */
-    @Operation(summary = "Get user by ID", description = "Retrieves a specific user by their ID.")
-    @GetMapping("/{id}")
-    public ResponseEntity<UserResponseDto> getUserById(
-            @PathVariable Long id) {
 
-    Optional<UserResponseDto> userResponseDto = userService.findUserById(id);
-        return userResponseDto
-                .map(ResponseEntity::ok)  // Return the user if found
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());  // Return 404 if not found
-    }
-
-
-    /**
-     * Retrieves a user by their username.
-     *
-     * @param username The username of the user to retrieve.
-     * @return ResponseEntity with the user data or 404 if not found.
-     */
-    @Operation(summary = "Get user by username", description = "Retrieves a specific user by their username.")
+    @Operation(summary = "Hämta användare", description = "Hämtar en specifik användare baserat på användarnamn.")
     @GetMapping("/{username}")
-    public ResponseEntity<UserResponseDto> getUserByUsername(
-            @PathVariable String username) {
+    public ResponseEntity<UserResponseDto> getUser(@PathVariable String username) {
+        User user = userService.getUserByUsername(username);  // Hämta användaren via tjänsten
 
-        Optional<UserResponseDto> userResponseDto = userService.loadUserByUsername(username);
-        return userResponseDto
-                .map(ResponseEntity::ok)  // Return the user if found
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());  // Return 404 if not found
+        if (user == null) {
+            return ResponseEntity.status(404).build();  // Returnera 404 om användaren inte finns
+        }
+
+        // Skapa en DTO av användaren
+        UserResponseDto response = new UserResponseDto(
+                user.getId(),
+                user.getUsername(),
+                user.getRoles().stream().map(role -> role.getAuthority()).collect(Collectors.toList()) // Mappar roller till deras namn
+        );
+
+        return ResponseEntity.ok(response);
     }
 
-    /**
-     * Retrieves all users.
-     * @return ResponseEntity with a list of all users or 404 if no users are found.
-     */
-    @Operation(summary = "Get all users", description = "Retrieves a list of all users.")
+
+    @Operation(summary = "Hämta alla användare", description = "Returnerar en lista med alla användare.")
     @GetMapping
-    public ResponseEntity<List<UserResponseDto>> getAllUsers() {
+    public ResponseEntity<List<UserDto>> getAllUsers() {
         if (userService.getAllUsers().isEmpty()) {
             return ResponseEntity.status(404).build();
         }
         return ResponseEntity.ok(userService.getAllUsers());
     }
-    /**
-     * Updates an existing user's information.
-     *
-     * @param id The ID of the user to update.
-     * @param updatedUserDto The updated user data.
-     * @return ResponseEntity with the updated user or 404 if not found.
-     */
-    @Operation(summary = "Update user", description = "Updates an existing user's information.")
-    @PutMapping("/{id}")
-    public ResponseEntity<UserResponseDto> updateUser(
-            @PathVariable Long id,
-            @RequestBody UserRequestDto updatedUserDto) {
 
-        Optional<UserResponseDto> updatedUser = userService.updateUser(id, updatedUserDto);
-        return updatedUser
-                .map(ResponseEntity::ok)  // Return the updated user if successful
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());  // Return 404 if not found
-    }
+    @Operation(summary = "Uppdatera lösenord", description = "Uppdaterar ett lösenord för en specifik användare. Kräver nuvarande lösenord för att ändra till ett nytt.")
+    @PutMapping
+    public ResponseEntity<String> updatePassword(@RequestBody UpdatePasswordDto changePasswordDto) {
+        // Hämta användaren baserat på användarnamn
+        User user = userService.getUserByUsername(changePasswordDto.getUsername());
 
-    /**
-        * Updates a user's password.
-        *
-     * @param updatePasswordDto The ChangePasswordDto containing the user's username, current password, and new password.
-     *                          The current password must match the user's current password in the database.
-     *                          The new password must be different from the current password.
-     *                          The new password will be encrypted before saving.
-     */
-    @Operation(summary = "Update password", description = "Updates a user's password.")
-    @PutMapping("/password")
-    public ResponseEntity<String> updatePassword(@RequestBody UpdatePasswordDto updatePasswordDto) {
-        // Kontrollera om användaren existerar
-        Optional<UserResponseDto> userOptional = userService.loadUserByUsername(updatePasswordDto.getUsername());
-        if (userOptional.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        if (user == null) {  // Om användaren inte finns
+            return ResponseEntity.status(404).body("User not found");
         }
 
-        // Hämta det befintliga krypterade lösenordet
-        String currentEncryptedPassword = userService.getPassword(updatePasswordDto.getUsername());
+        // Hämta det krypterade lösenordet för användaren
+        String encryptedPassword = user.getPassword();
 
-        // Validera att det aktuella lösenordet är korrekt
-        if (!passwordEncoder.matches(updatePasswordDto.getCurrentPassword(), currentEncryptedPassword)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Current password is incorrect");
+        // Kontrollera om det nuvarande lösenordet matchar
+        if (!passwordEncoder.matches(changePasswordDto.getCurrentPassword(), encryptedPassword)) {
+            return ResponseEntity.status(400).body("Current password is incorrect");
         }
 
-        // Kontrollera att det nya lösenordet inte är samma som det gamla
-        if (passwordEncoder.matches(updatePasswordDto.getNewPassword(), currentEncryptedPassword)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("New password cannot be the same as the current password");
+        // Kontrollera om det nya lösenordet är detsamma som det nuvarande
+        if (passwordEncoder.matches(changePasswordDto.getNewPassword(), encryptedPassword)) {
+            return ResponseEntity.status(400).body("New password cannot be the same as the current password");
         }
 
         // Kryptera det nya lösenordet
-        String encryptedNewPassword = passwordEncoder.encode(updatePasswordDto.getNewPassword());
+        String newEncryptedPassword = passwordEncoder.encode(changePasswordDto.getNewPassword());
 
-        // Uppdatera lösenordet i databasen
-        userService.updatePassword(updatePasswordDto.getUsername(), encryptedNewPassword);
+        // Uppdatera användarens lösenord i databasen
+        userService.updatePassword(changePasswordDto.getUsername(), newEncryptedPassword);
 
-        return ResponseEntity.ok("Password updated successfully");
+        return ResponseEntity.ok("Password updated");
     }
 
-    /**
-     * Deletes a user based on the username.
-     *
-     * @param username The username of the user to be deleted.
-     * @return ResponseEntity with a success message or an error message if the user is not found.
-     */
-    @Operation(summary = "Delete user", description = "Deletes a user.")
-    @DeleteMapping
-    public ResponseEntity<String> deleteUser(@RequestParam String username) {
-        try {
-            String message = userService.deleteUser(username); // Call the service to delete the user
-            return ResponseEntity.ok(message); // Return success message with 200 status
-        } catch (RuntimeException ex) {
-            return ResponseEntity.status(404).body(ex.getMessage()); // Return error message with 404 status
+
+    @Operation(summary = "Radera användare", description = "Raderar en specifik användare baserat på användarnamn.")
+    @DeleteMapping("/{username}")
+    public ResponseEntity<String> deleteUser(@PathVariable String username) {
+        String response = userService.deleteUser(username);
+        if (userService.deleteUser(username).equals(response)) {
+            return ResponseEntity.status(404).body(response);
         }
+        return ResponseEntity.ok("User deleted");
+    }
+
+    @Operation(summary = "Sätt roller", description = "Sätter roller för en användare. Användaren kan inte ändra sina egna roller.")
+    @PutMapping("/roles")
+    public ResponseEntity<UserDto> setRoles(@RequestBody UserDto userDto, @AuthenticationPrincipal UserDetails userDetails) {
+        String loggedInUsername = userDetails.getUsername();
+
+        if (userDto.getUsername().equals(loggedInUsername)) {
+            return ResponseEntity.status(400).build();
+        }
+
+        return ResponseEntity.ok(userService.setRoles(userDto).get());
     }
 }
-
-

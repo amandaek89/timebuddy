@@ -1,114 +1,85 @@
 package com.timebuddy.controllers;
 
+import com.timebuddy.models.Todo;
+import com.timebuddy.dtos.TodoListResponseDto;
 import com.timebuddy.models.TodoList;
+import com.timebuddy.models.User;
 import com.timebuddy.services.TodoListService;
-import org.springframework.http.HttpStatus;
+import com.timebuddy.services.UserService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
- * Controller class to handle CRUD operations for TodoLists.
- * This class exposes API endpoints to manage TodoLists.
+ * Controller class to handle TodoList related HTTP requests.
  */
 @RestController
-@RequestMapping("/api/todolists")
+@RequestMapping("/api/todolist")
 public class TodoListController {
 
     private final TodoListService todoListService;
+    private final UserService userService;
 
     /**
      * Constructor for TodoListController.
      *
-     * @param todoListService The service to interact with TodoLists.
+     * @param todoListService The service used for managing TodoLists.
+     * @param userService The service used for managing Users.
      */
-    public TodoListController(TodoListService todoListService) {
+    public TodoListController(TodoListService todoListService, UserService userService) {
         this.todoListService = todoListService;
+        this.userService = userService;
     }
 
     /**
-     * Creates a new TodoList.
+     * Retrieves all TodoLists for the currently authenticated user.
+     * Returns a list of TodoListResponseDto containing the date and titles of todos.
      *
-     * @param todoList The TodoList object to be created.
-     * @return A response with the created TodoList.
+     * @param user The currently authenticated user.
+     * @return A list of TodoLists associated with the user.
      */
-    @PostMapping
-    public ResponseEntity<TodoList> createTodoList(@RequestBody TodoList todoList) {
-        TodoList createdTodoList = todoListService.createTodoList(todoList);
-        return new ResponseEntity<>(createdTodoList, HttpStatus.CREATED);
+    @GetMapping("/user")
+    public ResponseEntity<List<TodoListResponseDto>> getTodoListsForUser(@AuthenticationPrincipal User user) {
+        List<TodoListResponseDto> todoLists = todoListService.getTodoListsForUser(user);
+        return ResponseEntity.ok(todoLists);
     }
 
     /**
-     * Retrieves all TodoLists for a specific user.
+     * Retrieves or creates a TodoList for a specific date for the currently authenticated user.
+     * Returns a TodoListResponseDto with the date and titles of todos.
      *
-     * @param userId The ID of the user whose TodoLists should be retrieved.
-     * @return A response containing the list of TodoLists for the user.
+     * @param date The date for which the TodoList is to be retrieved or created (format: yyyy-MM-dd).
+     * @param user The currently authenticated user.
+     * @return A ResponseEntity containing a TodoListResponseDto with the date and todo titles.
      */
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<TodoList>> getTodoListsForUser(@PathVariable Long userId) {
-        List<TodoList> todoLists = todoListService.getTodoListsForUser(userId);
-        if (todoLists.isEmpty()) {
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT); // No content if the list is empty
-        }
-        return new ResponseEntity<>(todoLists, HttpStatus.OK);
+    @GetMapping("/user/{date}")
+    public ResponseEntity<TodoListResponseDto> getOrCreateTodoListForUser(
+            @PathVariable("date") String date,
+            @AuthenticationPrincipal User user) {
+
+        // Parse the date string to LocalDate
+        LocalDate localDate = LocalDate.parse(date);
+
+        // Retrieve or create the TodoList for the specified date
+        TodoList todoList = todoListService.getOrCreateTodoList(user, localDate);
+
+        // Map the TodoList to TodoListResponseDto
+        TodoListResponseDto responseDto = new TodoListResponseDto(
+                todoList.getDate(),
+                todoList.getTodos().stream()
+                        .map(Todo::getTitle) // Extract titles of todos
+                        .collect(Collectors.toList())
+        );
+
+        // Return the DTO wrapped in a ResponseEntity
+        return ResponseEntity.ok(responseDto);
     }
 
-    /**
-     * Retrieves a specific TodoList by its ID.
-     *
-     * @param id The ID of the TodoList to be retrieved.
-     * @return A response containing the TodoList if found, or a 404 if not found.
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<TodoList> getTodoListById(@PathVariable Long id) {
-        Optional<TodoList> todoList = todoListService.getTodoListById(id);
-        return todoList.map(ResponseEntity::ok)
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
-    }
 
-    /**
-     * Retrieves a specific TodoList by its title.
-     *
-     * @param title The title of the TodoList to be retrieved.
-     * @return A response containing the TodoList if found, or a 404 if not found.
-     */
-    @GetMapping("/title/{title}")
-    public ResponseEntity<TodoList> getTodoListByTitle(@PathVariable String title) {
-        Optional<TodoList> todoList = todoListService.getTodoListByTitle(title);
-        return todoList.map(ResponseEntity::ok)
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
-    }
 
-    /**
-     * Updates an existing TodoList.
-     *
-     * @param id The ID of the TodoList to be updated.
-     * @param updatedTodoList The updated TodoList object.
-     * @return A response with the updated TodoList, or a 404 if not found.
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<TodoList> updateTodoList(@PathVariable Long id, @RequestBody TodoList updatedTodoList) {
-        Optional<TodoList> updated = todoListService.updateTodoList(id, updatedTodoList);
-        return updated.map(ResponseEntity::ok)
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
-    }
 
-    /**
-     * Deletes a specific TodoList by its ID.
-     *
-     * @param id The ID of the TodoList to be deleted.
-     * @return A response indicating the outcome of the delete operation.
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTodoList(@PathVariable Long id) {
-        Optional<TodoList> todoList = todoListService.getTodoListById(id);
-        if (todoList.isPresent()) {
-            todoListService.deleteTodoList(id);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT); // Successfully deleted
-        }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND); // Not found if no TodoList with the given ID exists
-    }
 }
-

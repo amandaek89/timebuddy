@@ -45,6 +45,16 @@ public class AuthenticationService {
      * @throws UserAlreadyExistsException If the username already exists in the system.
      */
     public String register(AuthenticationRequest authRequest) throws UserAlreadyExistsException {
+        // Validate username length
+        if (authRequest.getUsername() == null || authRequest.getUsername().length() < 5) {
+            throw new IllegalArgumentException("Username must be at least 5 characters long");
+        }
+
+        // Validate password length
+        if (authRequest.getPassword() == null || authRequest.getPassword().length() < 5) {
+            throw new IllegalArgumentException("Password must be at least 5 characters long");
+        }
+
         // Check if the username already exists in the database
         if (userRepo.findByUsername(authRequest.getUsername()).isPresent()) {
             throw new UserAlreadyExistsException("User already exists");
@@ -58,6 +68,7 @@ public class AuthenticationService {
         // Assign the default role 'ROLE_USER' to the user
         Set<Role> roles = new HashSet<>();
         roles.add(Role.ROLE_USER);
+        newUser.setAuthorities(roles);
 
         // Set creation and update timestamps
         newUser.setCreatedAt(new Date());

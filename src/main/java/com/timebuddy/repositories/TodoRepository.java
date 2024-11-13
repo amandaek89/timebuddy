@@ -15,14 +15,12 @@ import java.util.List;
 public interface TodoRepository extends JpaRepository<Todo, Long> {
 
     /**
-     * Finds a Todo by its title.
-     * This method will automatically generate a query based on the method name.
+     * Finds Todo tasks by their title.
      *
-     * @param title The title of the Todo to search for.
-     * @return The Todo object that matches the provided title, or null if no match is found.
+     * @param title The title of the Todo tasks to search for.
+     * @return A list of Todo tasks with the given title.
      */
-    Todo findByTitle(String title);
+    List<Todo> findByTitle(String title);
 
-    List<Todo> findByTodoListId(Long todoListId);
 }
 

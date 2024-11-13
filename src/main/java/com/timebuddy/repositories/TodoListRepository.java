@@ -1,36 +1,44 @@
 package com.timebuddy.repositories;
 
+import com.timebuddy.dtos.UserDto;
 import com.timebuddy.models.TodoList;
+import com.timebuddy.models.User;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+
 /**
- * Repository interface for the TodoList entity.
- * Provides CRUD operations for TodoList objects and custom query methods.
- * Extends JpaRepository to benefit from built-in functionality for database operations.
+ * Repository interface for managing TodoList entities in the database.
+ * Provides methods to find, save, and delete TodoLists for a user based on the date.
  */
-@Repository
 public interface TodoListRepository extends JpaRepository<TodoList, Long> {
 
     /**
-     * Finds a TodoList by its title.
-     * This method will automatically generate a query based on the method name.
+     * Retrieves a TodoList for a specific user and date.
      *
-     * @param title The title of the TodoList to search for.
-     * @return The TodoList object that matches the provided title, or null if no match is found.
+     * @param user The user whose TodoList is being retrieved.
+     * @param date The date of the TodoList.
+     * @return An Optional containing the TodoList if it exists, otherwise empty.
      */
-    Optional<TodoList> findByTitle(String title);
+    Optional<TodoList> findByUserAndDate(User user, LocalDate date);
 
     /**
-     * Retrieves a list of TodoLists for a specific user.
+     * Deletes all TodoLists before a specified date for a given user.
      *
-     * @param userId The ID of the user whose TodoLists are to be retrieved.
-     * @return A list of TodoLists belonging to the user.
+     * @param user The user whose TodoLists are to be deleted.
+     * @param date The date before which the TodoLists will be deleted.
      */
-    List<TodoList> findByUserId(Long userId);
+    void deleteByUserAndDateBefore(User user, LocalDate date);
 
+    /**
+     * Retrieves all TodoLists for a specific user.
+     *
+     * @param user The user whose TodoLists are to be retrieved.
+     * @return A list of TodoLists associated with the user.
+     */
+    List<TodoList> findByUser(User user);
 }
 

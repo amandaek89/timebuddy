@@ -2,6 +2,7 @@ package com.timebuddy.controllers;
 
 import com.timebuddy.dtos.AuthenticationRequest;
 import com.timebuddy.dtos.ApiResponse;
+import com.timebuddy.dtos.AuthenticationResponse;
 import com.timebuddy.services.AuthenticationService;
 import com.timebuddy.exceptions.UserAlreadyExistsException;
 import com.timebuddy.exceptions.InvalidLoginException;
@@ -57,20 +58,16 @@ public class AuthenticationController {
      * @param authRequest The authentication request containing the username and password.
      * @return A response containing the JWT token if the login is successful.
      */
+    @Operation(summary = "Login user", description = "Authenticates the user and returns a JWT token upon successful login.")
     @PostMapping("/login")
-    public ApiResponse<String> loginUser(@RequestBody AuthenticationRequest authRequest) {
+    public ApiResponse<AuthenticationResponse> loginUser(@RequestBody AuthenticationRequest authRequest) {
         try {
-            // Authenticates the user and retrieves the JWT token
             String jwtToken = authenticationService.authenticate(authRequest);
-
-            // Return a successful response with the token
-            return new ApiResponse<>(HttpStatus.OK.value(), "Login successful", jwtToken);
+            return new ApiResponse<>(HttpStatus.OK.value(), "Login successful", new AuthenticationResponse(jwtToken));
         } catch (InvalidLoginException e) {
-            // Return an unauthorized response if login fails
             return new ApiResponse<>(HttpStatus.UNAUTHORIZED.value(), e.getMessage(), null);
         }
     }
-
     @GetMapping("/test")
     public ResponseEntity<String> test() {
         return ResponseEntity.ok("Authenticated");
