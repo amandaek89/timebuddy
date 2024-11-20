@@ -4,24 +4,22 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalTime;
+
+import java.time.LocalTime;
+
 /**
- * A Data Transfer Object (DTO) for transferring information about a to-do item
- * between client and server.
+ * DTO for creating or updating a Todo task.
+ * Includes fields for the title, description, time (optional), and all-day status.
  */
-@AllArgsConstructor
-@NoArgsConstructor
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class TodoRequestDto {
 
-    /**
-     * The title of the to-do item.
-     */
     private String title;
-
-    /**
-     * A brief description of the to-do item.
-     */
     private String description;
-
+    private String time; // Optional time for the Todo task
 }
+
 

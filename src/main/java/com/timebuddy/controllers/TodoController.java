@@ -14,10 +14,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -71,26 +74,35 @@ public class TodoController {
      * @param userDetails The authenticated user's details, automatically injected.
      * @return A ResponseEntity containing the newly created Todo task in a TodoResponseDto.
      */
-    @Operation(summary = "Add a todo to a specific day", description = "Adds a new todo to the authenticated user's TodoList for a specific day")
+    @Operation(summary = "Add a todo to a specific day", description = "Adds a new todo to the authenticated user's TodoList for a specific day, with an optional time.")
     @PostMapping("/add/{date}")
     public ResponseEntity<TodoResponseDto> addTodoToSpecificDay(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestBody TodoRequestDto todoRequestDto,  // Använd TodoRequestDto här för inkommande data
+            @RequestBody TodoRequestDto todoRequestDto,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        // Hämta den autentiserade användaren från UserDetails
+        // Extract the username of the logged-in user
         String username = userDetails.getUsername();
-        User user = userService.getUserByUsername(username);
 
-        // Lägg till Todo till det specifika datumet
+        // Fetch the User entity from the database
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Create the Todo based on the provided data (including time and all-day flag)
         Todo todo = todoService.addTodoToSpecificDay(user, date, todoRequestDto);
 
-        // Bygg och returnera en förenklad respons utan ID
+        // Format the time to string if needed
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        String formattedTime = (todo.getTime() != null) ? todo.getTime().format(formatter) : null;
+
+        // Create the response DTO
         TodoResponseDto responseDto = new TodoResponseDto(
                 todo.getTitle(),
                 todo.getDescription(),
                 todo.isDone(),
-                todo.getTodoList().getDate()
+                todo.getTodoList().getDate(),
+                formattedTime, // Formatted time as a string
+                todo.isAllDay()
         );
 
         return ResponseEntity.ok(responseDto);
@@ -131,15 +143,25 @@ public class TodoController {
         }
 
         // Convert Todos to TodoResponseDto before returning them
-        List<TodoResponseDto> todoResponseDtos = todos.stream()
-                .map(todo -> new TodoResponseDto(
-                        todo.getTitle(),
-                        todo.getDescription(),
-                        todo.isDone(),
-                        todo.getTodoList().getDate()))
+        List<TodoResponseDto> todoResponseDto = todos.stream()
+                .map(todo -> {
+                    // Format time if necessary
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+                    String formattedTime = (todo.getTime() != null) ? todo.getTime().format(formatter) : null;
+
+                    // Return the TodoResponseDto
+                    return new TodoResponseDto(
+                            todo.getTitle(),
+                            todo.getDescription(),
+                            todo.isDone(),
+                            todo.getTodoList().getDate(),
+                            formattedTime, // Pass formatted time or null
+                            todo.isAllDay()
+                    );
+                })
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(todoResponseDtos);  // Return the response with only necessary fields
+        return ResponseEntity.ok(todoResponseDto);  // Return the response with only necessary fields
     }
 
 
@@ -150,26 +172,57 @@ public class TodoController {
      * @param userDetails The details of the currently authenticated user, injected automatically.
      * @return A ResponseEntity containing the list of TodoResponseDto for the specified date.
      */
+    @Operation(summary = "Get todos for a specific date", description = "Retrieves all todos for the authenticated user on a specific date")
     @GetMapping("/date/{date}")
     public ResponseEntity<List<TodoResponseDto>> getTodosForDate(
             @PathVariable String date,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         // Extract the username of the logged-in user
-        String loggedInUsername = userDetails.getUsername();
+        String username = userDetails.getUsername();
 
         // Fetch the User entity from the database
-        User user = userRepository.findByUsername(loggedInUsername)
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Parse the date from String to LocalDate
         LocalDate localDate = LocalDate.parse(date);
 
         // Fetch Todos for the user and date
-        List<TodoResponseDto> todos = todoService.getTodosForDate(user, localDate);
+        List<TodoResponseDto> todoResponseDtos = todoService.getTodosForDate(user, localDate);
 
-        return ResponseEntity.ok(todos);
+        return ResponseEntity.ok(todoResponseDtos);
     }
+
+    /**
+     * Endpoint to retrieve all todos for the logged-in user.
+     *
+     * @param userDetails The details of the logged-in user, automatically injected.
+     * @return ResponseEntity containing the list of all TodoResponseDto objects for the logged-in user.
+     * @throws RuntimeException if the user is not found in the database.
+     */
+    /**
+     * Endpoint to retrieve all todos for the logged-in user.
+     *
+     * @param userDetails The details of the logged-in user.
+     * @return ResponseEntity containing the list of all TodoResponseDto objects for the logged-in user.
+     */
+    @Operation(summary = "Get all todos for the authenticated user", description = "Retrieves all todos for the authenticated user")
+    @GetMapping("/all")
+    public ResponseEntity<List<TodoResponseDto>> getAllTodosForUser(@AuthenticationPrincipal UserDetails userDetails) {
+        // Extract the username of the logged-in user
+        String username = userDetails.getUsername();
+
+        // Fetch the User entity from the database
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Fetch all Todos for the user (from all TodoLists)
+        List<TodoResponseDto> todoResponseDtos = todoService.getAllTodosForUser(user);
+
+        return ResponseEntity.ok(todoResponseDtos);  // Return the list of todos
+    }
+
 
 
     /**

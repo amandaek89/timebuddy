@@ -1,6 +1,7 @@
 package com.timebuddy.repositories;
 
 import com.timebuddy.models.Todo;
+import com.timebuddy.models.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -22,5 +23,12 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
      */
     List<Todo> findByTitle(String title);
 
+    /**
+     * Finds all todos associated with a specific user.
+     *
+     * @param user The user whose todos are to be retrieved.
+     * @return A list of Todo entities belonging to the specified user.
+     */
+    List<Todo> findByUser(User user);
 }
 

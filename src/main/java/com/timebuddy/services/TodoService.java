@@ -1,5 +1,7 @@
 package com.timebuddy.services;
 
+import com.timebuddy.dtos.TodoListResponseDto;
+import com.timebuddy.mappers.TodoMapper;
 import com.timebuddy.dtos.TodoRequestDto;
 import com.timebuddy.dtos.TodoResponseDto;
 import com.timebuddy.exceptions.TodoNotFoundException;
@@ -28,6 +30,7 @@ public class TodoService {
     private final UserRepository userRepository;
 
     private final TodoListRepository todoListRepository;
+
     /**
      * Constructor for TodoService.
      *
@@ -54,26 +57,36 @@ public class TodoService {
         return todoRepository.save(todo);
     }
 
+
     /**
-     * Adds a new Todo task to the TodoList for the specified user on a specific date.
+     * Service method that handles the creation of a Todo task for a specific date.
+     * If no time is provided, the Todo will be set as an "all-day" task.
      *
-     * @param user          The authenticated user to which the Todo belongs.
-     * @param date          The date for which the Todo task is created.
-     * @param todoRequestDto The request data containing title and description for the Todo task.
-     * @return The created Todo task.
+     * @param user           The user who owns the Todo task.
+     * @param date           The specific date for the Todo task.
+     * @param todoRequestDto The DTO containing the data for the new Todo task.
+     * @return The created Todo entity.
+     * @throws IllegalArgumentException if the provided time format is invalid.
      */
     public Todo addTodoToSpecificDay(User user, LocalDate date, TodoRequestDto todoRequestDto) {
-        // Hämta eller skapa TodoList för det specifika datumet
+        // Fetch or create the TodoList for the specific date
         TodoList todoList = todoListService.getOrCreateTodoList(user, date);
 
-        // Skapa en ny Todo med information från TodoRequestDto
-        Todo todo = new Todo();
-        todo.setTitle(todoRequestDto.getTitle());
-        todo.setDescription(todoRequestDto.getDescription());
-        todo.setDone(false);  // Ny Todo är inte klar som standard
-        todo.setTodoList(todoList);  // Koppla Todo till TodoList för det aktuella datumet
+        // Use the TodoMapper to convert the TodoRequestDto to a Todo entity
+        Todo todo = TodoMapper.toEntity(todoRequestDto);
 
-        // Spara Todo och returnera den
+        // Set the TodoList for the new Todo
+        todo.setTodoList(todoList);
+
+        // If time is provided, it's already handled in the `TodoMapper.toEntity()` method
+
+        // If no time provided, mark as an all-day task
+        if (todoRequestDto.getTime() == null || todoRequestDto.getTime().isEmpty()) {
+            todo.setTime(null);
+            todo.setAllDay(true);
+        }
+
+        // Save the Todo entity and return it
         return todoRepository.save(todo);
     }
 
@@ -106,21 +119,41 @@ public class TodoService {
      * @return A list of Todos associated with the specified user and date.
      * @throws RuntimeException if no TodoList is found for the given user and date.
      */
+
     public List<TodoResponseDto> getTodosForDate(User user, LocalDate date) {
         // Retrieve the TodoList for the user and date
         TodoList todoList = todoListRepository.findByUserAndDate(user, date)
                 .orElseThrow(() -> new RuntimeException("TodoList not found for this date"));
 
-        // Map the Todos to TodoResponseDto
+        // Map the Todo entities to TodoResponseDto objects using the TodoMapper
         return todoList.getTodos().stream()
-                .map(todo -> new TodoResponseDto(
-                        todo.getTitle(),
-                        todo.getDescription(),
-                        todo.isDone(),
-                        todo.getTodoList().getDate()
-                ))
+                .map(TodoMapper::toResponseDto)  // Use the mapper to convert Todo to TodoResponseDto
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Retrieves all Todos for a specific user.
+     *
+     * @param user The user whose Todos are to be retrieved.
+     * @return A list of TodoResponseDto objects associated with the user.
+     */
+    /**
+     * Retrieves all Todos for the specified user.
+     *
+     * @param user The user whose Todos are to be retrieved.
+     * @return A list of TodoResponseDto objects for the user.
+     */
+    public List<TodoResponseDto> getAllTodosForUser(User user) {
+        // Fetch all TodoLists for the user
+        List<TodoList> todoLists = todoListRepository.findByUser(user);
+
+        // For each TodoList, get all Todos and map them to TodoResponseDto
+        return todoLists.stream()
+                .flatMap(todoList -> todoList.getTodos().stream())  // Get all Todos for each TodoList
+                .map(TodoMapper::toResponseDto)  // Convert each Todo to TodoResponseDto
+                .collect(Collectors.toList());
+    }
+
 
     /**
      * Updates an existing Todo task in the database.

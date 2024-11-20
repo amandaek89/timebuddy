@@ -6,32 +6,22 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
+import java.time.LocalTime;
+
 /**
- * A Data Transfer Object (DTO) for transferring information about a to-do item
- * from the server to the client as part of the response.
+ * Data Transfer Object (DTO) for returning a simplified representation of a Todo task.
+ * This DTO includes the title, description, completion status, date, time, and all-day status.
  */
-@AllArgsConstructor
-@NoArgsConstructor
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class TodoResponseDto {
 
-    /**
-     * The title of the to-do item.
-     */
     private String title;
-
-    /**
-     * A brief description of the to-do item.
-     */
     private String description;
-
-    /**
-     * Indicates whether the to-do item is marked as done or completed.
-     */
     private boolean done;
+    private LocalDate date; // Date of the Todo task
+    private String time; // Optional time of the Todo task
+    private boolean allDay; // Indicates whether the Todo is an all-day task
 
-    /**
-    * The date of the to-do item.
-    */
-    private LocalDate date;
 }
