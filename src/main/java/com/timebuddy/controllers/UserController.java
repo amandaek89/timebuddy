@@ -103,10 +103,13 @@ public class UserController {
         }
     }
 
-    @Operation(summary = "Radera användare", description = "Raderar en specifik användare baserat på användarnamn.")
-    @DeleteMapping("/{username}")
-    public ResponseEntity<String> deleteUser(@PathVariable String username) {
-        // Anropa deleteUser från service-klassen
+    @Operation(summary = "Radera användare", description = "Raderar den autentiserade användarens konto.")
+    @DeleteMapping
+    public ResponseEntity<String> deleteUser(@AuthenticationPrincipal UserDetails userDetails) {
+        // Hämta användarnamnet från den autentiserade användaren
+        String username = userDetails.getUsername();
+
+        // Anropa deleteUser från service-klassen för att radera användaren
         String response = userService.deleteUser(username);
 
         if ("User not found".equals(response)) {
@@ -114,9 +117,10 @@ public class UserController {
             return ResponseEntity.status(404).body(response);
         }
 
-        // Om användaren raderas, returnera 200 med ett meddelande
-        return ResponseEntity.ok(response);
+        // Om användaren raderas, returnera ett framgångsmeddelande
+        return ResponseEntity.status(200).body("User deleted");
     }
+
 
 
     @Operation(summary = "Sätt roller", description = "Sätter roller för en användare. Användaren kan inte ändra sina egna roller.")

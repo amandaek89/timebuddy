@@ -117,7 +117,6 @@ public class UserService {
                 .orElse("User not found"); // Om användaren inte finns, returnera "User not found"
     }
 
-
     /**
      * Hämtar lösenordet för en användare baserat på användarnamn.
      *
