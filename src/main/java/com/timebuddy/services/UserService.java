@@ -7,6 +7,7 @@ import com.timebuddy.dtos.UserResponseDto;
 import com.timebuddy.models.User;
 import com.timebuddy.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -63,22 +64,25 @@ public class UserService {
 
 
     /**
-     * Uppdaterar lösenordet för en användare om användaren hittas.
+     * Uppdaterar lösenordet för den autentiserade användaren.
      *
-     * @param username             Användarnamnet för användaren vars lösenord ska uppdateras.
+     * @param userDetails          Den autentiserade användarens detaljer (via @AuthenticationPrincipal).
      * @param newEncryptedPassword Det nya krypterade lösenordet.
      * @return Ett meddelande som indikerar resultatet.
      */
-    public String updatePassword(String username, String newEncryptedPassword) {
+    public String updatePassword(UserDetails userDetails, String newEncryptedPassword) {
+        String username = userDetails.getUsername();  // Hämta användarnamnet från den autentiserade användaren
+
         return userRepo.findByUsername(username)
                 .map(user -> {
-                    user.setPassword(newEncryptedPassword);
-                    user.setUpdatedAt(new Date());
-                    userRepo.save(user);
+                    user.setPassword(newEncryptedPassword);  // Uppdatera lösenordet
+                    user.setUpdatedAt(new Date());  // Uppdatera tidsstämpeln
+                    userRepo.save(user);  // Spara användaren med det nya lösenordet
                     return "Password updated";
                 })
-                .orElse("User not found");
+                .orElse("User not found");  // Om användaren inte finns
     }
+
 
     /**
      * Uppdaterar rollerna för en användare om användaren hittas.
@@ -103,13 +107,16 @@ public class UserService {
      * @return Ett meddelande som indikerar resultatet.
      */
     public String deleteUser(String username) {
+        // Hitta användaren med hjälp av användarnamnet
         return userRepo.findByUsername(username)
                 .map(user -> {
+                    // Om användaren finns, radera användaren
                     userRepo.delete(user);
-                    return "User deleted";
+                    return "User deleted"; // Meddelande som bekräftar att användaren har raderats
                 })
-                .orElse("User not found");
+                .orElse("User not found"); // Om användaren inte finns, returnera "User not found"
     }
+
 
     /**
      * Hämtar lösenordet för en användare baserat på användarnamn.

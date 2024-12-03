@@ -70,4 +70,6 @@ public class Todo {
     @JoinColumn(name = "user_id")
     private User user;
 
+    public Todo(long l, String updatedTodo, String updatedDescription, boolean b, Object o, Object o1) {
+    }
 }

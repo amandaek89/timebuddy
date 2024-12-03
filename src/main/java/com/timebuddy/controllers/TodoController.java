@@ -97,6 +97,7 @@ public class TodoController {
 
         // Create the response DTO
         TodoResponseDto responseDto = new TodoResponseDto(
+                todo.getId(),
                 todo.getTitle(),
                 todo.getDescription(),
                 todo.isDone(),
@@ -151,6 +152,7 @@ public class TodoController {
 
                     // Return the TodoResponseDto
                     return new TodoResponseDto(
+                            todo.getId(),
                             todo.getTitle(),
                             todo.getDescription(),
                             todo.isDone(),

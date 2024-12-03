@@ -19,6 +19,7 @@ public class TodoMapper {
      */
     public static TodoResponseDto toResponseDto(Todo todo) {
         return new TodoResponseDto(
+                todo.getId(),
                 todo.getTitle(),
                 todo.getDescription(),
                 todo.isDone(),

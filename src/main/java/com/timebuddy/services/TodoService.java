@@ -167,9 +167,11 @@ public class TodoService {
                 .map(todo -> {
                     todo.setTitle(updatedTodo.getTitle());
                     todo.setDescription(updatedTodo.getDescription());
+                    todo.setTime(updatedTodo.getTime()); // Uppdatera tid
                     return todoRepository.save(todo);
                 });
     }
+
 
     /**
      * Deletes a Todo task by its ID.

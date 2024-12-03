@@ -73,18 +73,14 @@ public class UserController {
 
     @Operation(summary = "Uppdatera lösenord", description = "Uppdaterar ett lösenord för en specifik användare. Kräver nuvarande lösenord för att ändra till ett nytt.")
     @PutMapping
-    public ResponseEntity<String> updatePassword(@RequestBody UpdatePasswordDto changePasswordDto) {
-        // Hämta användaren baserat på användarnamn
-        User user = userService.getUserByUsername(changePasswordDto.getUsername());
+    public ResponseEntity<String> updatePassword(
+            @AuthenticationPrincipal UserDetails userDetails,  // Hämta den autentiserade användaren
+            @RequestBody UpdatePasswordDto changePasswordDto) {
 
-        if (user == null) {  // Om användaren inte finns
-            return ResponseEntity.status(404).body("User not found");
-        }
-
-        // Hämta det krypterade lösenordet för användaren
+        // Kontrollera om nuvarande lösenord matchar
+        User user = userService.getUserByUsername(userDetails.getUsername());
         String encryptedPassword = user.getPassword();
 
-        // Kontrollera om det nuvarande lösenordet matchar
         if (!passwordEncoder.matches(changePasswordDto.getCurrentPassword(), encryptedPassword)) {
             return ResponseEntity.status(400).body("Current password is incorrect");
         }
@@ -94,25 +90,34 @@ public class UserController {
             return ResponseEntity.status(400).body("New password cannot be the same as the current password");
         }
 
-        // Kryptera det nya lösenordet
+        // Kryptera det nya lösenordet och uppdatera
         String newEncryptedPassword = passwordEncoder.encode(changePasswordDto.getNewPassword());
 
-        // Uppdatera användarens lösenord i databasen
-        userService.updatePassword(changePasswordDto.getUsername(), newEncryptedPassword);
+        // Anropa service-metoden för att uppdatera lösenordet
+        String response = userService.updatePassword(userDetails, newEncryptedPassword);
 
-        return ResponseEntity.ok("Password updated");
+        if (response.equals("Password updated")) {
+            return ResponseEntity.ok("Password updated");
+        } else {
+            return ResponseEntity.status(404).body(response);
+        }
     }
-
 
     @Operation(summary = "Radera användare", description = "Raderar en specifik användare baserat på användarnamn.")
     @DeleteMapping("/{username}")
     public ResponseEntity<String> deleteUser(@PathVariable String username) {
+        // Anropa deleteUser från service-klassen
         String response = userService.deleteUser(username);
-        if (userService.deleteUser(username).equals(response)) {
+
+        if ("User not found".equals(response)) {
+            // Om användaren inte finns, returnera 404
             return ResponseEntity.status(404).body(response);
         }
-        return ResponseEntity.ok("User deleted");
+
+        // Om användaren raderas, returnera 200 med ett meddelande
+        return ResponseEntity.ok(response);
     }
+
 
     @Operation(summary = "Sätt roller", description = "Sätter roller för en användare. Användaren kan inte ändra sina egna roller.")
     @PutMapping("/roles")

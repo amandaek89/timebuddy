@@ -17,6 +17,7 @@ import java.time.LocalTime;
 @AllArgsConstructor
 public class TodoResponseDto {
 
+    private long id;
     private String title;
     private String description;
     private boolean done;
