@@ -37,5 +37,11 @@ public class TodoList {
     @OneToMany(mappedBy = "todoList", cascade = CascadeType.ALL, orphanRemoval = true) // Cascades all operations to related Todo entities.
     private List<Todo> todos = new ArrayList<>(); // Initialize with an empty list.
 
+    /** Add Todo to the TodoList. */
+    public void addTodo(Todo todo) {
+        todos.add(todo);
+        todo.setTodoList(this);  // Set the back reference from Todo to TodoList
+    }
+
 }
 

@@ -1,63 +1,101 @@
-package com.timebuddy.services;
-
-import com.timebuddy.exceptions.TodoNotFoundException;
+import com.timebuddy.dtos.TodoRequestDto;
+import com.timebuddy.dtos.TodoResponseDto;
 import com.timebuddy.models.Todo;
+import com.timebuddy.models.TodoList;
+import com.timebuddy.models.User;
 import com.timebuddy.repositories.TodoRepository;
+import com.timebuddy.repositories.TodoListRepository;
+import com.timebuddy.repositories.UserRepository;
+import com.timebuddy.services.TodoListService;
+import com.timebuddy.services.TodoService;
+import com.timebuddy.exceptions.TodoNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TodoServiceTest {
 
     @Mock
     private TodoRepository todoRepository;
 
+    @Mock
+    private TodoListService todoListService;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private TodoListRepository todoListRepository;
+
     @InjectMocks
     private TodoService todoService;
 
-    private Todo todo;
+    private User testUser;
+    private Todo testTodo;
+    private TodoRequestDto todoRequestDto;
 
     @BeforeEach
     public void setUp() {
-        // Initialize the mocks
         MockitoAnnotations.openMocks(this);
 
-        // Create a new Todo for testing
-        todo = new Todo(1L, "Test Todo", "Test Description", false, null, null);
+        // Set up a mock user
+        testUser = new User();
+        testUser.setId(1L);
+        testUser.setUsername("testUser");
+
+        // Set up a test Todo
+        testTodo = new Todo(1L, "Test Todo", "This is a test", false, LocalTime.of(9, 0));
+
+        // Set up a TodoRequestDto
+        todoRequestDto = new TodoRequestDto();
+        todoRequestDto.setTitle("New Todo");
+        todoRequestDto.setDescription("New Todo Description");
+        todoRequestDto.setTime("10:00");
     }
 
     @Test
-    public void testAddTodo() {
+    public void testAddTodoToSpecificDay_Success() {
         // Arrange
-        when(todoRepository.save(todo)).thenReturn(todo);
+        LocalDate date = LocalDate.of(2024, 12, 5);
+        TodoList todoList = new TodoList();
+        todoList.setUser(testUser);
+        todoList.setDate(date);
+        when(todoListService.getOrCreateTodoList(testUser, date)).thenReturn(todoList);
+        when(todoRepository.save(any(Todo.class))).thenReturn(testTodo);
 
         // Act
-        Todo result = todoService.addTodo(todo);
+        Todo result = todoService.addTodoToSpecificDay(testUser, date, todoRequestDto);
 
         // Assert
         assertNotNull(result);
-        assertEquals(todo.getTitle(), result.getTitle());
-        verify(todoRepository, times(1)).save(todo);
+        assertEquals(testTodo.getTitle(), result.getTitle());
+        assertEquals(testTodo.getDescription(), result.getDescription());
+        assertEquals(testTodo.getTime(), result.getTime());
+        verify(todoListService, times(1)).getOrCreateTodoList(testUser, date);
+        verify(todoRepository, times(1)).save(any(Todo.class));
     }
 
     @Test
     public void testGetTodoById_Success() {
         // Arrange
-        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(testTodo));
 
         // Act
         Optional<Todo> result = todoService.getTodoById(1L);
 
         // Assert
         assertTrue(result.isPresent());
-        assertEquals(todo.getId(), result.get().getId());
+        assertEquals(testTodo.getId(), result.get().getId());
         verify(todoRepository, times(1)).findById(1L);
     }
 
@@ -75,10 +113,41 @@ public class TodoServiceTest {
     }
 
     @Test
+    public void testGetTodosForDate_Success() {
+        // Arrange
+        LocalDate date = LocalDate.of(2024, 12, 5);
+        TodoList todoList = new TodoList();
+        todoList.setUser(testUser);
+        todoList.setDate(date);
+        todoList.addTodo(testTodo);
+        when(todoListRepository.findByUserAndDate(testUser, date)).thenReturn(Optional.of(todoList));
+
+        // Act
+        List<TodoResponseDto> result = todoService.getTodosForDate(testUser, date);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(testTodo.getTitle(), result.get(0).getTitle());
+        verify(todoListRepository, times(1)).findByUserAndDate(testUser, date);
+    }
+
+    @Test
+    public void testGetTodosForDate_NotFound() {
+        // Arrange
+        LocalDate date = LocalDate.of(2024, 12, 5);
+        when(todoListRepository.findByUserAndDate(testUser, date)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(RuntimeException.class, () -> todoService.getTodosForDate(testUser, date));
+        verify(todoListRepository, times(1)).findByUserAndDate(testUser, date);
+    }
+
+    @Test
     public void testUpdateTodoById_Success() {
         // Arrange
-        Todo updatedTodo = new Todo(1L, "Updated Todo", "Updated Description", false, null, null); // Lägger inte till isDone eftersom det inte ska uppdateras här
-        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
+        Todo updatedTodo = new Todo(1L, "Updated Todo", "Updated Description", false, LocalTime.of(10, 30));
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(testTodo));
         when(todoRepository.save(updatedTodo)).thenReturn(updatedTodo);
 
         // Act
@@ -88,15 +157,15 @@ public class TodoServiceTest {
         assertTrue(result.isPresent());
         assertEquals(updatedTodo.getTitle(), result.get().getTitle());
         assertEquals(updatedTodo.getDescription(), result.get().getDescription());
+        assertEquals(updatedTodo.getTime(), result.get().getTime());
         verify(todoRepository, times(1)).findById(1L);
         verify(todoRepository, times(1)).save(updatedTodo);
     }
 
-
     @Test
     public void testUpdateTodoById_NotFound() {
         // Arrange
-        Todo updatedTodo = new Todo(1L, "Updated Todo", "Updated Description", true, null, null);
+        Todo updatedTodo = new Todo(1L, "Updated Todo", "Updated Description", false, LocalTime.of(10, 30));
         when(todoRepository.findById(1L)).thenReturn(Optional.empty());
 
         // Act
@@ -108,15 +177,9 @@ public class TodoServiceTest {
     }
 
     @Test
-    public void testDeleteTodo_Success() {
+    public void testDeleteTodo_Success() throws Exception {
         // Arrange
-        Todo todo = new Todo();
-        todo.setId(1L);
-        todo.setTitle("Test Todo");
-        todo.setDescription("Description");
-
-        // Mocka att todoRepository hittar en Todo när den efterfrågas
-        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(testTodo));
 
         // Act
         todoService.deleteTodo(1L);
@@ -131,45 +194,39 @@ public class TodoServiceTest {
         when(todoRepository.findById(1L)).thenReturn(Optional.empty());
 
         // Act & Assert
-        TodoNotFoundException exception = assertThrows(TodoNotFoundException.class, () -> {
-            todoService.deleteTodo(1L);
-        });
-
-        // Verifiera att rätt exception kastades
-        assertEquals("Todo task with ID 1 not found.", exception.getMessage());
+        assertThrows(TodoNotFoundException.class, () -> todoService.deleteTodo(1L));
+        verify(todoRepository, times(1)).findById(1L);
     }
 
     @Test
-    public void testMarkAsDone_Success() {
+    public void testUpdateTodoStatus_Success() {
         // Arrange
-        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
-        when(todoRepository.save(todo)).thenReturn(todo);
+        boolean done = true;
+        Todo updatedTodo = new Todo(1L, "Test Todo", "Description", done, LocalTime.of(9, 0));
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(testTodo));
+        when(todoRepository.save(updatedTodo)).thenReturn(updatedTodo);
 
         // Act
-        Optional<Todo> result = todoService.markAsDone(1L);
+        Optional<Todo> result = todoService.updateTodoStatus(1L, done);
 
         // Assert
         assertTrue(result.isPresent());
-        assertTrue(result.get().isDone());
+        assertEquals(done, result.get().isDone());
         verify(todoRepository, times(1)).findById(1L);
-        verify(todoRepository, times(1)).save(todo);
+        verify(todoRepository, times(1)).save(updatedTodo);
     }
 
     @Test
-    public void testMarkAsNotDone_Success() {
+    public void testUpdateTodoStatus_NotFound() {
         // Arrange
-        todo.setDone(true);
-        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
-        when(todoRepository.save(todo)).thenReturn(todo);
+        boolean done = true;
+        when(todoRepository.findById(1L)).thenReturn(Optional.empty());
 
         // Act
-        Optional<Todo> result = todoService.markAsNotDone(1L);
+        Optional<Todo> result = todoService.updateTodoStatus(1L, done);
 
         // Assert
-        assertTrue(result.isPresent());
-        assertFalse(result.get().isDone());
+        assertFalse(result.isPresent());
         verify(todoRepository, times(1)).findById(1L);
-        verify(todoRepository, times(1)).save(todo);
     }
 }
-
