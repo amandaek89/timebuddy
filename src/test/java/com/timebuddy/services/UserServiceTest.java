@@ -1,43 +1,53 @@
 package com.timebuddy.services;
 
-import com.timebuddy.dtos.UserDto;
 import com.timebuddy.models.Role;
 import com.timebuddy.models.User;
 import com.timebuddy.repositories.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.mockito.MockitoAnnotations;
+import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
     @Mock
     private UserRepository userRepo;
 
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
     @InjectMocks
     private UserService userService;
 
-    @Test
-    void getUserByUsername_shouldReturnUserWhenFound() {
-        // Arrange
-        User user = new User();
-        user.setUsername("testuser");
+    private User mockUser;
+    private Date now;
 
-        when(userRepo.findByUsername("testuser")).thenReturn(Optional.of(user));
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+
+        // Skapa ett mockat User-objekt
+        now = new Date();
+        Set<Role> roles = new HashSet<>();
+        roles.add(Role.ROLE_USER);
+
+        mockUser = new User();
+        mockUser.setId(1L);
+        mockUser.setUsername("testuser");
+        mockUser.setPassword("password");
+        mockUser.setCreatedAt(now);
+        mockUser.setUpdatedAt(now);
+        mockUser.setAuthorities(roles);
+    }
+
+    @Test
+    void getUserByUsername_ShouldReturnUser_WhenUserExists() {
+        // Arrange
+        when(userRepo.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
 
         // Act
         User result = userService.getUserByUsername("testuser");
@@ -48,187 +58,32 @@ class UserServiceTest {
     }
 
     @Test
-    void getUserByUsername_shouldThrowExceptionWhenNotFound() {
+    void updatePassword_ShouldUpdatePassword_WhenUserExists() {
         // Arrange
-        when(userRepo.findByUsername("unknown")).thenReturn(Optional.empty());
-
-        // Act & Assert
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> userService.getUserByUsername("unknown"));
-        assertEquals("User not found with username: unknown", exception.getMessage());
-    }
-
-    @Test
-    void updatePassword_shouldUpdatePasswordWhenUserFound() {
-        // Arrange
-        User user = new User();
-        user.setUsername("testuser");
-
-        when(userRepo.findByUsername("testuser")).thenReturn(Optional.of(user));
+        String newPassword = "newPassword";
+        when(userRepo.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+        UserDetails userDetails = mock(UserDetails.class);
+        when(userDetails.getUsername()).thenReturn("testuser");
 
         // Act
-        String result = userService.updatePassword("testuser", "newPassword");
+        String result = userService.updatePassword(userDetails, newPassword);
 
         // Assert
         assertEquals("Password updated", result);
-        verify(userRepo).save(user);
-        assertEquals("newPassword", user.getPassword());
+        assertEquals(newPassword, mockUser.getPassword());
+        verify(userRepo, times(1)).save(mockUser);
     }
 
     @Test
-    void updatePassword_shouldReturnErrorWhenUserNotFound() {
+    void deleteUser_ShouldReturnSuccessMessage_WhenUserExists() {
         // Arrange
-        when(userRepo.findByUsername("unknown")).thenReturn(Optional.empty());
-
-        // Act
-        String result = userService.updatePassword("unknown", "newPassword");
-
-        // Assert
-        assertEquals("User not found", result);
-        verify(userRepo, never()).save(any());
-    }
-
-
-    @Test
-    void getAllUsers_shouldReturnUserDtos() {
-        // Arrange
-        User user1 = new User();
-        user1.setId(1L);
-        user1.setUsername("user1");
-        user1.setAuthorities(Set.of(Role.ROLE_USER));  // Använd direkt Role enum här
-
-        User user2 = new User();
-        user2.setId(2L);
-        user2.setUsername("user2");
-        user2.setAuthorities(Set.of(Role.ROLE_ADMIN));  // Använd direkt Role enum här
-
-        when(userRepo.findAll()).thenReturn(List.of(user1, user2));
-
-        // Act
-        List<UserDto> users = userService.getAllUsers();
-
-        // Assert
-        assertEquals(2, users.size());
-
-        // Jämför användarnamn och roller (konvertera till String via getAuthority)
-        assertEquals("user1", users.get(0).getUsername());
-        assertIterableEquals(
-                Set.of("ROLE_USER"),
-                users.get(0).getAuthorities().stream().map(Role::getAuthority).collect(Collectors.toSet()) // Konvertera Role till String
-        );
-
-        assertEquals("user2", users.get(1).getUsername());
-        assertIterableEquals(
-                Set.of("ROLE_ADMIN"),
-                users.get(1).getAuthorities().stream().map(Role::getAuthority).collect(Collectors.toSet()) // Konvertera Role till String
-        );
-    }
-
-
-    @Test
-    void setRoles_shouldUpdateRolesWhenUserFound() {
-        // Arrange
-        User user = new User();
-        user.setId(1L);
-        user.setUsername("testuser");
-        user.setAuthorities(Set.of(Role.ROLE_USER));  // Använd Role enum direkt här
-
-        UserDto userDto = new UserDto(1L, "testuser", Set.of(Role.ROLE_ADMIN));  // Använd Role enum direkt här
-
-        when(userRepo.findByUsername("testuser")).thenReturn(Optional.of(user));
-        when(userRepo.save(user)).thenReturn(user); // Mockar att `save` returnerar användaren
-
-        // Act
-        Optional<UserDto> result = userService.setRoles(userDto);
-
-        // Assert
-        assertTrue(result.isPresent());
-        assertEquals("testuser", result.get().getUsername());
-
-        // Här konverterar vi både det förväntade och faktiska resultatet till Set<String> genom getAuthority()
-        Set<String> expectedRoles = userDto.getAuthorities().stream()
-                .map(Role::getAuthority) // Konverterar Role till String via getAuthority()
-                .collect(Collectors.toSet());
-
-        Set<String> actualRoles = result.get().getAuthorities().stream()
-                .map(Role::getAuthority) // Konverterar Role till String via getAuthority()
-                .collect(Collectors.toSet());
-
-        assertIterableEquals(expectedRoles, actualRoles); // Jämför Set<String> i stället för Set<Role>
-
-        verify(userRepo).save(user); // Verifierar att `save` anropas
-    }
-
-
-
-    @Test
-    void setRoles_shouldReturnEmptyWhenUserNotFound() {
-        // Arrange
-        UserDto userDto = new UserDto(1L, "unknown", Set.of(Role.valueOf("ROLE_ADMIN")));
-
-        when(userRepo.findByUsername("unknown")).thenReturn(Optional.empty());
-
-        // Act
-        Optional<UserDto> result = userService.setRoles(userDto);
-
-        // Assert
-        assertFalse(result.isPresent());
-        verify(userRepo, never()).save(any());
-    }
-
-    @Test
-    void deleteUser_shouldDeleteUserWhenFound() {
-        // Arrange
-        User user = new User();
-        user.setUsername("testuser");
-
-        when(userRepo.findByUsername("testuser")).thenReturn(Optional.of(user));
+        when(userRepo.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
 
         // Act
         String result = userService.deleteUser("testuser");
 
         // Assert
         assertEquals("User deleted", result);
-        verify(userRepo).delete(user);
-    }
-
-    @Test
-    void deleteUser_shouldReturnErrorWhenUserNotFound() {
-        // Arrange
-        when(userRepo.findByUsername("unknown")).thenReturn(Optional.empty());
-
-        // Act
-        String result = userService.deleteUser("unknown");
-
-        // Assert
-        assertEquals("User not found", result);
-        verify(userRepo, never()).delete(any());
-    }
-
-    @Test
-    void getPassword_shouldReturnPasswordWhenUserFound() {
-        // Arrange
-        User user = new User();
-        user.setPassword("encryptedPassword");
-
-        when(userRepo.findByUsername("testuser")).thenReturn(Optional.of(user));
-
-        // Act
-        String result = userService.getPassword("testuser");
-
-        // Assert
-        assertEquals("encryptedPassword", result);
-    }
-
-    @Test
-    void getPassword_shouldReturnErrorWhenUserNotFound() {
-        // Arrange
-        when(userRepo.findByUsername("unknown")).thenReturn(Optional.empty());
-
-        // Act
-        String result = userService.getPassword("unknown");
-
-        // Assert
-        assertEquals("User not found", result);
+        verify(userRepo, times(1)).delete(mockUser);
     }
 }

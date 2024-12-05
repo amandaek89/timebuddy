@@ -1,3 +1,5 @@
+package com.timebuddy.services;
+
 import com.timebuddy.dtos.TodoRequestDto;
 import com.timebuddy.dtos.TodoResponseDto;
 import com.timebuddy.models.Todo;
@@ -54,7 +56,12 @@ public class TodoServiceTest {
         testUser.setUsername("testUser");
 
         // Set up a test Todo
-        testTodo = new Todo(1L, "Test Todo", "This is a test", false, LocalTime.of(9, 0));
+        testTodo = new Todo();
+        testTodo.setId(1L); // Ge testTodo ett ID
+        testTodo.setTitle("Test Todo");
+        testTodo.setDescription("Description");
+        testTodo.setDone(false);
+        testTodo.setTime(LocalTime.of(9, 0));
 
         // Set up a TodoRequestDto
         todoRequestDto = new TodoRequestDto();
@@ -115,7 +122,8 @@ public class TodoServiceTest {
     @Test
     public void testGetTodosForDate_Success() {
         // Arrange
-        LocalDate date = LocalDate.of(2024, 12, 5);
+        LocalDate date = LocalDate.of(2024, 12, 05);
+        testTodo.setId(1L);
         TodoList todoList = new TodoList();
         todoList.setUser(testUser);
         todoList.setDate(date);
@@ -202,9 +210,10 @@ public class TodoServiceTest {
     public void testUpdateTodoStatus_Success() {
         // Arrange
         boolean done = true;
-        Todo updatedTodo = new Todo(1L, "Test Todo", "Description", done, LocalTime.of(9, 0));
+        testTodo.setId(1L); // Ge testTodo ett ID
+        testTodo.setDone(done); // Uppdatera "done" attributet
         when(todoRepository.findById(1L)).thenReturn(Optional.of(testTodo));
-        when(todoRepository.save(updatedTodo)).thenReturn(updatedTodo);
+        when(todoRepository.save(testTodo)).thenReturn(testTodo);
 
         // Act
         Optional<Todo> result = todoService.updateTodoStatus(1L, done);
@@ -213,8 +222,9 @@ public class TodoServiceTest {
         assertTrue(result.isPresent());
         assertEquals(done, result.get().isDone());
         verify(todoRepository, times(1)).findById(1L);
-        verify(todoRepository, times(1)).save(updatedTodo);
+        verify(todoRepository, times(1)).save(testTodo);
     }
+
 
     @Test
     public void testUpdateTodoStatus_NotFound() {

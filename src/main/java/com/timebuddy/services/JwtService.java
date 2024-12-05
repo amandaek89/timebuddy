@@ -25,10 +25,10 @@ import java.util.stream.Collectors;
 @Service
 public class JwtService {
 
-    @Value("${JWT_EXPIRATION}")
+    @Value("${jwt.expiration}")
     private long jwtExpiration;  // The expiration time of the token in milliseconds
 
-    @Value("${JWT_SECRET}")
+    @Value("${jwt.secret}")
     private String secretKey;  // The secret key used to sign the JWT
 
 

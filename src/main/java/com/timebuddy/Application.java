@@ -8,22 +8,25 @@ import javax.sql.DataSource;
 
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.beans.factory.annotation.Value;
+import com.mysql.cj.jdbc.Driver;
+import io.github.cdimascio.dotenv.Dotenv;
+import javax.sql.DataSource;
 
-/**
- * Main application class for starting the Spring Boot application.
- * This class loads environment variables from a .env file,
- * sets up the database connection properties, and runs the Spring Boot application.
- *
- * The application is configured to connect to a MySQL database using the provided
- * environment variables for the database URL, username, and password.
- */
 @SpringBootApplication
 public class Application {
 
     /**
      * Load environment variables from the .env file using Dotenv library.
+     * This will load the variables when the application starts.
      */
     private static final Dotenv dotenv = Dotenv.load();
+
     /**
      * Main method to launch the Spring Boot application.
      * It loads the environment variables from the .env file and sets system properties
@@ -32,14 +35,11 @@ public class Application {
      * @param args Command line arguments.
      */
     public static void main(String[] args) {
-        // Load environment variables from the .env file using Dotenv library.
-        Dotenv dotenv = Dotenv.load();
-
-        // Set the JWT properties as system properties.
+        // Set the JWT properties as system properties (from the loaded .env file).
         System.setProperty("JWT_EXPIRATION", dotenv.get("JWT_EXPIRATION"));
         System.setProperty("JWT_SECRET", dotenv.get("JWT_SECRET"));
 
-        // Set the database connection properties as system properties.
+        // Set the database connection properties as system properties (from the loaded .env file).
         System.setProperty("DB_URL", dotenv.get("DB_URL"));
         System.setProperty("DB_USERNAME", dotenv.get("DB_USERNAME"));
         System.setProperty("DB_PASSWORD", dotenv.get("DB_PASSWORD"));
@@ -56,15 +56,22 @@ public class Application {
      */
     @Bean
     public DataSource dataSource() {
-        // Load environment variables from the .env file.
-        Dotenv dotenv = Dotenv.load();
-
         // Set up the DataSource for MySQL using DriverManagerDataSource.
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
+
+        // Use the environment variables set as system properties.
+        String dbUrl = System.getProperty("DB_URL");
+        String dbUsername = System.getProperty("DB_USERNAME");
+        String dbPassword = System.getProperty("DB_PASSWORD");
+
+        if (dbUrl == null || dbUsername == null || dbPassword == null) {
+            throw new IllegalStateException("Database connection properties are not properly set.");
+        }
+
         dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
-        dataSource.setUrl(dotenv.get("DB_URL"));
-        dataSource.setUsername(dotenv.get("DB_USERNAME"));
-        dataSource.setPassword(dotenv.get("DB_PASSWORD"));
+        dataSource.setUrl(dbUrl);
+        dataSource.setUsername(dbUsername);
+        dataSource.setPassword(dbPassword);
 
         // Return the configured DataSource.
         return dataSource;
