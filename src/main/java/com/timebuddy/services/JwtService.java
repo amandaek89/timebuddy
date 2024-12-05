@@ -146,7 +146,6 @@ public class JwtService {
                 .compact();  // Skapa och returnera den kompakta JWT-token
     }
 
-
     /**
      * Checks if a JWT token has expired.
      *
