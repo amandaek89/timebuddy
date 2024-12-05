@@ -48,25 +48,6 @@ public class TodoController {
     }
 
     /**
-     * Creates a new Todo task.
-     *
-     * @param requestDto The data transfer object containing information about the new Todo.
-     * @return A ResponseEntity containing an ApiResponse with the created Todo details.
-     */
-    @Operation(summary = "Create a todo", description = "Creates a new todo")
-    @PostMapping
-    public ResponseEntity<ApiResponse<TodoResponseDto>> createTodo(@RequestBody @Valid TodoRequestDto requestDto) {
-        Todo todo = TodoMapper.toEntity(requestDto);
-        Todo savedTodo = todoService.addTodo(todo);
-        TodoResponseDto responseDto = TodoMapper.toResponseDto(savedTodo);
-
-        return new ResponseEntity<>(
-                new ApiResponse<>(HttpStatus.CREATED.value(), "Todo created successfully", responseDto),
-                HttpStatus.CREATED
-        );
-    }
-
-    /**
      * Adds a new Todo task for the authenticated user on a specific date.
      *
      * @param date        The date for which the Todo is being added (format: yyyy-MM-dd).
@@ -126,46 +107,6 @@ public class TodoController {
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ApiResponse<>(HttpStatus.NOT_FOUND.value(), "Todo not found", null)));
     }
-
-    /**
-     * Retrieves Todo tasks by their title.
-     * Returns only specific fields (title, description, done, date) as a DTO.
-     *
-     * @param title The title of the Todo tasks to search for.
-     * @return A ResponseEntity containing a list of Todo tasks with the given title,
-     *         or a 404 status if none are found.
-     */
-    @Operation(summary = "Get todos by title", description = "Retrieves a list of todos by their title")
-    @GetMapping("/title/{title}")
-    public ResponseEntity<List<TodoResponseDto>> getTodosByTitle(@PathVariable String title) {
-        List<Todo> todos = todoService.getTodoByTitle(title);
-        if (todos.isEmpty()) {
-            return ResponseEntity.notFound().build();  // Return 404 if no todos found
-        }
-
-        // Convert Todos to TodoResponseDto before returning them
-        List<TodoResponseDto> todoResponseDto = todos.stream()
-                .map(todo -> {
-                    // Format time if necessary
-                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
-                    String formattedTime = (todo.getTime() != null) ? todo.getTime().format(formatter) : null;
-
-                    // Return the TodoResponseDto
-                    return new TodoResponseDto(
-                            todo.getId(),
-                            todo.getTitle(),
-                            todo.getDescription(),
-                            todo.isDone(),
-                            todo.getTodoList().getDate(),
-                            formattedTime, // Pass formatted time or null
-                            todo.isAllDay()
-                    );
-                })
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(todoResponseDto);  // Return the response with only necessary fields
-    }
-
 
     /**
      * Retrieves all Todos for the currently authenticated user on a specific date.
@@ -272,35 +213,19 @@ public class TodoController {
     }
 
     /**
-     * Marks a Todo as completed.
+     * Marks a Todo as completed or not completed based on the provided status.
      *
-     * @param id The ID of the Todo to mark as done.
+     * @param id The ID of the Todo to update.
+     * @param done The status to set the Todo to. If true, the task will be marked as completed. If false, it will be marked as not completed.
      * @return A ResponseEntity containing an ApiResponse with the updated Todo details or an error message.
      */
-    @Operation(summary = "Mark a todo as done", description = "Marks a todo as done")
-    @PatchMapping("/{id}/done")
-    public ResponseEntity<ApiResponse<TodoResponseDto>> markTodoAsDone(@PathVariable Long id) {
-        Optional<Todo> updatedTodo = todoService.markAsDone(id);
+    @Operation(summary = "Update a todo status", description = "Marks a todo as completed or not completed based on the provided status")
+    @PatchMapping("/{id}/{done}")
+    public ResponseEntity<ApiResponse<TodoResponseDto>> updateTodoStatus(@PathVariable Long id, @PathVariable boolean done) {
+        Optional<Todo> updatedTodo = todoService.updateTodoStatus(id, done);
 
         return updatedTodo.map(value -> ResponseEntity.ok(
-                        new ApiResponse<>(HttpStatus.OK.value(), "Todo marked as done", TodoMapper.toResponseDto(value))))
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ApiResponse<>(HttpStatus.NOT_FOUND.value(), "Todo not found", null)));
-    }
-
-    /**
-     * Marks a Todo as not completed.
-     *
-     * @param id The ID of the Todo to mark as not done.
-     * @return A ResponseEntity containing an ApiResponse with the updated Todo details or an error message.
-     */
-    @Operation(summary = "Mark a todo as not done", description = "Marks a todo as not done")
-    @PatchMapping("/{id}/not-done")
-    public ResponseEntity<ApiResponse<TodoResponseDto>> markTodoAsNotDone(@PathVariable Long id) {
-        Optional<Todo> updatedTodo = todoService.markAsNotDone(id);
-
-        return updatedTodo.map(value -> ResponseEntity.ok(
-                        new ApiResponse<>(HttpStatus.OK.value(), "Todo marked as not done", TodoMapper.toResponseDto(value))))
+                        new ApiResponse<>(HttpStatus.OK.value(), "Todo status updated", TodoMapper.toResponseDto(value))))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ApiResponse<>(HttpStatus.NOT_FOUND.value(), "Todo not found", null)));
     }

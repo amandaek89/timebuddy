@@ -106,29 +106,4 @@ public class TodoListController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
-
-    /**
-     * Retrieves TodoLists for the current week of the logged-in user.
-     * The method ensures that the user is authenticated, then fetches the TodoLists
-     * for the current week (Monday to Sunday) and returns them in a response.
-     *
-     * @param userDetails The currently authenticated user details, automatically injected via @AuthenticationPrincipal.
-     * @return A ResponseEntity containing a list of TodoListResponseDto objects for the current week.
-     * @throws RuntimeException If the user is not found or if there is an issue fetching the TodoLists.
-     */
-    @GetMapping("/week")
-    public ResponseEntity<List<TodoListResponseDto>> getTodoListsForCurrentWeek(
-            @AuthenticationPrincipal UserDetails userDetails) {
-        try {
-            // Call the service method to fetch TodoLists for the current week
-            List<TodoListResponseDto> todoLists = todoListService.getTodoListsForCurrentWeek(userDetails);
-
-            // Return the list of TodoLists as a successful response
-            return ResponseEntity.ok(todoLists);
-        } catch (RuntimeException e) {
-            // Handle exceptions (e.g., if user is not found)
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-        }
-    }
-
 }

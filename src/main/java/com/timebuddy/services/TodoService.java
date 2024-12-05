@@ -48,17 +48,6 @@ public class TodoService {
     }
 
     /**
-     * Adds a new Todo task to the database.
-     *
-     * @param todo The Todo task to be added.
-     * @return The saved Todo task with its generated ID.
-     */
-    public Todo addTodo(Todo todo) {
-        return todoRepository.save(todo);
-    }
-
-
-    /**
      * Service method that handles the creation of a Todo task for a specific date.
      * If no time is provided, the Todo will be set as an "all-day" task.
      *
@@ -158,7 +147,7 @@ public class TodoService {
     /**
      * Updates an existing Todo task in the database.
      *
-     * @param id The ID of the Todo task to be updated.
+     * @param id          The ID of the Todo task to be updated.
      * @param updatedTodo The updated Todo object with new values.
      * @return The updated Todo task, or an empty Optional if the Todo task was not found.
      */
@@ -190,31 +179,17 @@ public class TodoService {
     }
 
     /**
-     * Marks a Todo task as completed.
+     * Marks a Todo task as completed or not completed based on the provided status.
      *
-     * @param id The ID of the Todo task to be marked as completed.
-     * @return The updated Todo task with its status set to "done", or an empty Optional if not found.
+     * @param id   The ID of the Todo task to be updated.
+     * @param done The status to set the Todo task to. If true, the task will be marked as completed. If false, it will be marked as not completed.
+     * @return The updated Todo task with the new status, or an empty Optional if not found.
      */
-    public Optional<Todo> markAsDone(Long id) {
+    public Optional<Todo> updateTodoStatus(Long id, boolean done) {
         return todoRepository.findById(id)
                 .map(todo -> {
-                    todo.setDone(true);
-                    return todoRepository.save(todo);
+                    todo.setDone(done);  // Set the status to the provided 'done' value
+                    return todoRepository.save(todo);  // Save the updated task
                 });
     }
-
-    /**
-     * Marks a Todo task as not completed.
-     *
-     * @param id The ID of the Todo task to be marked as not completed.
-     * @return The updated Todo task with its status set to "not done", or an empty Optional if not found.
-     */
-    public Optional<Todo> markAsNotDone(Long id) {
-        return todoRepository.findById(id)
-                .map(todo -> {
-                    todo.setDone(false);
-                    return todoRepository.save(todo);
-                });
-    }
-
 }

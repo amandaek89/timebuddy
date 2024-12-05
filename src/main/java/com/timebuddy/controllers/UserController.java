@@ -42,35 +42,6 @@ public class UserController {
     }
 
 
-    @Operation(summary = "Hämta användare", description = "Hämtar en specifik användare baserat på användarnamn.")
-    @GetMapping("/{username}")
-    public ResponseEntity<UserResponseDto> getUser(@PathVariable String username) {
-        User user = userService.getUserByUsername(username);  // Hämta användaren via tjänsten
-
-        if (user == null) {
-            return ResponseEntity.status(404).build();  // Returnera 404 om användaren inte finns
-        }
-
-        // Skapa en DTO av användaren
-        UserResponseDto response = new UserResponseDto(
-                user.getId(),
-                user.getUsername(),
-                user.getRoles().stream().map(role -> role.getAuthority()).collect(Collectors.toList()) // Mappar roller till deras namn
-        );
-
-        return ResponseEntity.ok(response);
-    }
-
-
-    @Operation(summary = "Hämta alla användare", description = "Returnerar en lista med alla användare.")
-    @GetMapping
-    public ResponseEntity<List<UserDto>> getAllUsers() {
-        if (userService.getAllUsers().isEmpty()) {
-            return ResponseEntity.status(404).build();
-        }
-        return ResponseEntity.ok(userService.getAllUsers());
-    }
-
     @Operation(summary = "Uppdatera lösenord", description = "Uppdaterar ett lösenord för en specifik användare. Kräver nuvarande lösenord för att ändra till ett nytt.")
     @PutMapping
     public ResponseEntity<String> updatePassword(
@@ -119,19 +90,5 @@ public class UserController {
 
         // Om användaren raderas, returnera ett framgångsmeddelande
         return ResponseEntity.status(200).body("User deleted");
-    }
-
-
-
-    @Operation(summary = "Sätt roller", description = "Sätter roller för en användare. Användaren kan inte ändra sina egna roller.")
-    @PutMapping("/roles")
-    public ResponseEntity<UserDto> setRoles(@RequestBody UserDto userDto, @AuthenticationPrincipal UserDetails userDetails) {
-        String loggedInUsername = userDetails.getUsername();
-
-        if (userDto.getUsername().equals(loggedInUsername)) {
-            return ResponseEntity.status(400).build();
-        }
-
-        return ResponseEntity.ok(userService.setRoles(userDto).get());
     }
 }
