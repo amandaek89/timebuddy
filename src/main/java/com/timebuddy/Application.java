@@ -3,66 +3,44 @@ package com.timebuddy;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import javax.sql.DataSource;
-
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+
+import javax.sql.DataSource;
 
 @SpringBootApplication
 public class Application {
 
     /**
      * Main method to launch the Spring Boot application.
-     * It loads the environment variables from the system environment and sets system properties
-     * for the database connection, then runs the Spring application.
+     * It runs the Spring application.
      *
      * @param args Command line arguments.
      */
     public static void main(String[] args) {
-        // Get environment variables directly from the system environment (no .env file needed).
-        String jwtExpiration = System.getenv("JWT_EXPIRATION");
-        String jwtSecret = System.getenv("JWT_SECRET");
-        String dbUrl = System.getenv("DB_URL");
-        String dbUsername = System.getenv("DB_USERNAME");
-        String dbPassword = System.getenv("DB_PASSWORD");
-
-        // Ensure all required environment variables are present.
-        if (jwtExpiration == null || jwtSecret == null || dbUrl == null || dbUsername == null || dbPassword == null) {
-            throw new IllegalStateException("Required environment variables are missing.");
-        }
-
-        // Set the JWT properties as system properties (useful for Spring Security or other components).
-        System.setProperty("JWT_EXPIRATION", jwtExpiration);
-        System.setProperty("JWT_SECRET", jwtSecret);
-
-        // Set the database connection properties as system properties.
-        System.setProperty("DB_URL", dbUrl);
-        System.setProperty("DB_USERNAME", dbUsername);
-        System.setProperty("DB_PASSWORD", dbPassword);
-
         // Run the Spring Boot application.
         SpringApplication.run(Application.class, args);
     }
 
     /**
      * Bean to configure the DataSource for connecting to the MySQL database.
-     * Uses the environment variables set in the system environment for database configuration.
+     * Uses values injected via Spring's @Value annotation.
      *
      * @return DataSource configured with database connection details.
      */
     @Bean
-    public DataSource dataSource() {
-        // Set up the DataSource for MySQL using DriverManagerDataSource.
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+    public DataSource dataSource(
+            @Value("${DB_URL}") String dbUrl,
+            @Value("${DB_USERNAME}") String dbUsername,
+            @Value("${DB_PASSWORD}") String dbPassword) {
 
-        // Use the environment variables set in the system environment.
-        String dbUrl = System.getProperty("DB_URL");
-        String dbUsername = System.getProperty("DB_USERNAME");
-        String dbPassword = System.getProperty("DB_PASSWORD");
-
+        // Ensure all required environment variables are present.
         if (dbUrl == null || dbUsername == null || dbPassword == null) {
             throw new IllegalStateException("Database connection properties are not properly set.");
         }
 
+        // Set up the DataSource for MySQL using DriverManagerDataSource.
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
         dataSource.setUrl(dbUrl);
         dataSource.setUsername(dbUsername);
