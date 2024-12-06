@@ -1,4 +1,6 @@
-
+# Inkludera bara target-mappen
+!target/
+# Ignorera
 *.iml
 *.class
 *.log
