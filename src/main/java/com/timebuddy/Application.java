@@ -22,27 +22,33 @@ import javax.sql.DataSource;
 public class Application {
 
     /**
-     * Load environment variables from the .env file using Dotenv library.
-     * This will load the variables when the application starts.
-     */
-    private static final Dotenv dotenv = Dotenv.load();
-
-    /**
      * Main method to launch the Spring Boot application.
-     * It loads the environment variables from the .env file and sets system properties
+     * It loads the environment variables from the system environment and sets system properties
      * for the database connection, then runs the Spring application.
      *
      * @param args Command line arguments.
      */
     public static void main(String[] args) {
-        // Set the JWT properties as system properties (from the loaded .env file).
-        System.setProperty("JWT_EXPIRATION", dotenv.get("JWT_EXPIRATION"));
-        System.setProperty("JWT_SECRET", dotenv.get("JWT_SECRET"));
+        // Get environment variables directly from the system environment (no .env file needed).
+        String jwtExpiration = System.getenv("JWT_EXPIRATION");
+        String jwtSecret = System.getenv("JWT_SECRET");
+        String dbUrl = System.getenv("DB_URL");
+        String dbUsername = System.getenv("DB_USERNAME");
+        String dbPassword = System.getenv("DB_PASSWORD");
 
-        // Set the database connection properties as system properties (from the loaded .env file).
-        System.setProperty("DB_URL", dotenv.get("DB_URL"));
-        System.setProperty("DB_USERNAME", dotenv.get("DB_USERNAME"));
-        System.setProperty("DB_PASSWORD", dotenv.get("DB_PASSWORD"));
+        // Ensure all required environment variables are present.
+        if (jwtExpiration == null || jwtSecret == null || dbUrl == null || dbUsername == null || dbPassword == null) {
+            throw new IllegalStateException("Required environment variables are missing.");
+        }
+
+        // Set the JWT properties as system properties (useful for Spring Security or other components).
+        System.setProperty("JWT_EXPIRATION", jwtExpiration);
+        System.setProperty("JWT_SECRET", jwtSecret);
+
+        // Set the database connection properties as system properties.
+        System.setProperty("DB_URL", dbUrl);
+        System.setProperty("DB_USERNAME", dbUsername);
+        System.setProperty("DB_PASSWORD", dbPassword);
 
         // Run the Spring Boot application.
         SpringApplication.run(Application.class, args);
@@ -50,7 +56,7 @@ public class Application {
 
     /**
      * Bean to configure the DataSource for connecting to the MySQL database.
-     * Uses the environment variables loaded from the .env file for database configuration.
+     * Uses the environment variables set in the system environment for database configuration.
      *
      * @return DataSource configured with database connection details.
      */
@@ -59,7 +65,7 @@ public class Application {
         // Set up the DataSource for MySQL using DriverManagerDataSource.
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
 
-        // Use the environment variables set as system properties.
+        // Use the environment variables set in the system environment.
         String dbUrl = System.getProperty("DB_URL");
         String dbUsername = System.getProperty("DB_USERNAME");
         String dbPassword = System.getProperty("DB_PASSWORD");
