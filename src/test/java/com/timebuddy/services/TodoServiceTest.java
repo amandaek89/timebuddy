@@ -154,21 +154,31 @@ public class TodoServiceTest {
     @Test
     public void testUpdateTodoById_Success() {
         // Arrange
-        Todo updatedTodo = new Todo(1L, "Updated Todo", "Updated Description", false, LocalTime.of(10, 30));
+        testTodo.setId(1L);
+        testTodo.setTitle("Original Todo");
+        testTodo.setDescription("Original Description");
+        testTodo.setTime(LocalTime.of(9, 0));
+
+        Todo updatedTodo = new Todo();
+        updatedTodo.setTitle("Updated Todo");
+        updatedTodo.setDescription("Updated Description");
+        updatedTodo.setTime(LocalTime.of(10, 30));
+
         when(todoRepository.findById(1L)).thenReturn(Optional.of(testTodo));
-        when(todoRepository.save(updatedTodo)).thenReturn(updatedTodo);
+        when(todoRepository.save(any(Todo.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
         Optional<Todo> result = todoService.updateTodoById(1L, updatedTodo);
 
         // Assert
         assertTrue(result.isPresent());
-        assertEquals(updatedTodo.getTitle(), result.get().getTitle());
-        assertEquals(updatedTodo.getDescription(), result.get().getDescription());
-        assertEquals(updatedTodo.getTime(), result.get().getTime());
+        assertEquals("Updated Todo", result.get().getTitle());
+        assertEquals("Updated Description", result.get().getDescription());
+        assertEquals(LocalTime.of(10, 30), result.get().getTime());
         verify(todoRepository, times(1)).findById(1L);
-        verify(todoRepository, times(1)).save(updatedTodo);
+        verify(todoRepository, times(1)).save(testTodo);
     }
+
 
     @Test
     public void testUpdateTodoById_NotFound() {
