@@ -10,6 +10,7 @@ public class Application {
     public static void main(String[] args) {
         // Ladda miljövariabler från .env-filen till systemets miljövariabler
         Dotenv dotenv = Dotenv.configure()
+                .directory("C:/Users/jespe/IdeaProjects/docker-compose")
                 .load();
 
         // Sätt varje miljövariabel som systemegenskap så att Spring Boot kan använda dem
