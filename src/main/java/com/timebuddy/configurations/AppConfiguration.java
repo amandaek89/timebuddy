@@ -2,9 +2,12 @@ package com.timebuddy.configurations;
 
 import com.timebuddy.models.User;
 import com.timebuddy.repositories.UserRepository;
+import com.timebuddy.services.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -17,9 +20,12 @@ import java.util.Optional;
  * Handles password encryption and user authentication details.
  */
 @Configuration
+@EnableJpaRepositories(basePackages = "com.timebuddy.repositories")  // Se till att paketet med repositories är korrekt
+@ComponentScan(basePackages = "com.timebuddy")
 public class AppConfiguration {
 
     private final UserRepository userRepo;
+    private final JwtService jwtService;
 
     /**
      * Constructor to inject the UserRepository dependency.
@@ -27,8 +33,17 @@ public class AppConfiguration {
      * @param userRepo the repository for managing user data.
      */
     @Autowired
-    public AppConfiguration(UserRepository userRepo) {
+    public AppConfiguration(UserRepository userRepo, JwtService jwtService) {
         this.userRepo = userRepo;
+        this.jwtService = jwtService;
+    }
+
+    /**
+        * Bean for creating a JwtAuthenticationFilter instance.
+     */
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter(UserDetailsService userDetailsService, JwtService jwtService) {
+        return new JwtAuthenticationFilter(userDetailsService, jwtService);
     }
 
     /**
