@@ -25,3 +25,6 @@ replay_pid*
 
 # Ignore .env file
 .env
+
+# Ignore target directory
+target/
